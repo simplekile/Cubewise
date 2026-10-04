@@ -58,6 +58,7 @@ function streakNow() {
   return alive ? state.streak.count : 0;
 }
 
+const fresh = new Set(); // achievements earned this session, not yet shown on the journey screen
 const bestOf = () => (state.solves.length ? Math.min(...state.solves.map((s) => s.t)) : null);
 const ACH = [
   { id: 'first', name: 'Bài học đầu tiên', icon: 'book-open', tone: 't-blue', test: () => Object.keys(state.done).length > 0 },
@@ -78,6 +79,7 @@ function checkAch() {
   for (const a of ACH) {
     if (!state.ach[a.id] && a.test()) {
       state.ach[a.id] = today();
+      fresh.add(a.id);
       toast(`Thành tựu: ${a.name}`);
       addXp(30, 'thành tựu');
     }
@@ -119,12 +121,31 @@ function passGate() {
 
 // ---------- navigation ----------
 let current = 's-home';
+const ORDER = ['s-home', 's-learn', 's-lesson', 's-train', 's-path'];
+// stagger children in: each gets an index the CSS turns into a delay
+function stagger(el, cls) {
+  [...el.children].forEach((c, i) => c.style.setProperty('--i', Math.min(i, 10)));
+  el.classList.remove(cls);
+  void el.offsetWidth; // restart the animation
+  el.classList.add(cls);
+}
 function go(id) {
   if (current === 's-train' && id !== 's-train') cancelTimer();
+  const dir = Math.sign(ORDER.indexOf(id) - ORDER.indexOf(current));
   current = id;
-  $$('.screen').forEach((s) => { s.hidden = s.id !== id; if (s.id === id) s.scrollTop = 0; });
+  $$('.screen').forEach((s) => {
+    s.hidden = s.id !== id;
+    if (s.id !== id) return;
+    s.scrollTop = 0;
+    s.style.setProperty('--dx', `${dir * 18}px`);
+    stagger(s, 'enter');
+  });
   const tab = id === 's-lesson' ? 's-learn' : id;
-  $$('.tab').forEach((t) => t.classList.toggle('on', t.dataset.go === tab));
+  $$('.tab').forEach((t, i) => {
+    const on = t.dataset.go === tab;
+    t.classList.toggle('on', on);
+    if (on) $('.tabbar').style.setProperty('--tab', i);
+  });
   cube.stop();
   if (id === 's-home') { cube.reset(); cube.pose(); cube.mount($('#stage-home'), { spin: true }); $('#lastMove').textContent = ''; renderHome(); }
   if (id === 's-learn') renderLessonList();
@@ -148,9 +169,12 @@ function renderHome() {
   $('#streakChip').classList.toggle('off', s === 0);
 
   const lv = levelOf(state.xp);
+  if ($('#lvlNum').textContent !== String(lv.level) && shownXp != null) {
+    const b = $('#lvlNum'); b.classList.remove('bump'); void b.offsetWidth; b.classList.add('bump');
+  }
+  countTo($('#xpNow'), lv.now);
   $('#lvlNum').textContent = lv.level;
   $('#lvl').textContent = lv.level;
-  $('#xpNow').textContent = lv.now;
   $('#xpNeed').textContent = lv.need;
   $('#xpBar').style.width = `${Math.round((lv.now / lv.need) * 100)}%`;
   const cap = LEVELS[Math.min(state.cap, LEVELS.length - 1)];
@@ -164,6 +188,20 @@ function renderHome() {
   else { cta.textContent = 'Luyện với đồng hồ'; homeAction = () => go('s-train'); }
 }
 let homeAction = () => {};
+let shownXp = null;
+function countTo(el, to) {
+  const from = Number(el.textContent) || 0;
+  shownXp = to;
+  if (from === to || matchMedia('(prefers-reduced-motion: reduce)').matches) { el.textContent = to; return; }
+  const t0 = performance.now(), dur = 700;
+  const step = (now) => {
+    if (shownXp !== to) return; // a newer count took over
+    const t = Math.min(1, (now - t0) / dur);
+    el.textContent = Math.round(from + (to - from) * (1 - Math.pow(1 - t, 3)));
+    if (t < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
 $('#homeCta').addEventListener('click', () => homeAction());
 
 let prime = false;
@@ -201,6 +239,7 @@ function renderLessonList() {
   }
   html.push(`<p class="note">Cấp 3 trở đi chủ yếu là luyện tốc độ. Bài CFOP sẽ có ở bản sau.</p>`);
   $('#lessonList').innerHTML = html.join('');
+  $$('#lessonList .group').forEach((g) => stagger(g, 'enter-list'));
   icons();
 }
 $('#lessonList').addEventListener('click', (e) => {
@@ -244,7 +283,8 @@ function lessonUi() {
   // the caption explains the move just made, so that move is the one lit up
   $$('#seq .mv').forEach((el, i) => { el.className = `mv${i < li - 1 ? ' done' : i === li - 1 ? ' next' : ''}`; });
   $('#lessonBadge').textContent = `${li}/${n}`;
-  $('#whyText').innerHTML = textAt(li);
+  const why = $('#whyText'), txt = textAt(li);
+  if (why.innerHTML !== txt) { why.innerHTML = txt; why.classList.remove('swap'); void why.offsetWidth; why.classList.add('swap'); }
   $('#lPrev').disabled = li === 0;
   $('#lNext').disabled = li >= n;
   const end = li >= n;
@@ -424,6 +464,7 @@ function stopRun() {
   cancelAnimationFrame(raf);
   const s = Math.round((performance.now() - t0) / 10) / 100;
   tm.textContent = fmt(s);
+  tEl.classList.remove('land'); void tEl.offsetWidth; tEl.classList.add('land');
   tState = 'stopping';
   setTimeout(() => { if (tState === 'stopping') tState = 'done'; }, 250);
   if (s < 3) { hint.textContent = 'Quá nhanh, có lẽ chạm nhầm. Chưa lưu.'; return; }
@@ -500,8 +541,10 @@ function renderPath() {
   $('#badges').innerHTML = ACH.map((a) => {
     const has = !!state.ach[a.id];
     const prog = !has && a.progress ? `<small>${a.progress()}</small>` : '';
-    return `<div class="bd ${has ? '' : 'lock'}"><div class="ic ${has ? a.tone : ''}"><i data-lucide="${has ? a.icon : 'lock'}"></i></div><span>${esc(a.name)}</span>${prog}</div>`;
+    return `<div class="bd ${has ? '' : 'lock'} ${fresh.has(a.id) ? 'new' : ''}"><div class="ic ${has ? a.tone : ''}"><i data-lucide="${has ? a.icon : 'lock'}"></i></div><span>${esc(a.name)}</span>${prog}</div>`;
   }).join('');
+  fresh.clear();
+  stagger($('#path'), 'enter-list');
   icons();
 }
 $('#wipe').addEventListener('click', () => {

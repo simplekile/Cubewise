@@ -171,7 +171,7 @@ export function createCube() {
       const [x, y, z] = c.userData.home;
       const dim = dimFn ? dimFn({ x, y, z }) : false;
       for (const s of c.userData.stickers) {
-        s.material.color.copy(dim ? DIM : s.userData.base);
+        s.userData.target = dim ? DIM : s.userData.base; // eased toward in frame()
         s.material.emissive.setHex(0x000000);
       }
       const h = c.userData.home;
@@ -181,9 +181,11 @@ export function createCube() {
 
   // ----- drag to rotate -----
   let dragging = false, lx = 0, ly = 0, idleSpin = true, lastTouch = 0;
+  let vx = 0, vy = 0; // drag velocity in radians per ms, kept after release for inertia
+  let lastMoveT = 0;
   const Y = new THREE.Vector3(0, 1, 0), X = new THREE.Vector3(1, 0, 0);
   canvas.addEventListener('pointerdown', (e) => {
-    dragging = true; lx = e.clientX; ly = e.clientY;
+    dragging = true; lx = e.clientX; ly = e.clientY; vx = vy = 0; lastMoveT = performance.now();
     canvas.setPointerCapture(e.pointerId);
     lastTouch = performance.now();
   });
@@ -193,9 +195,19 @@ export function createCube() {
     lx = e.clientX; ly = e.clientY;
     group.rotateOnWorldAxis(Y, dx * 0.011);
     group.rotateOnWorldAxis(X, dy * 0.011);
-    lastTouch = performance.now();
+    const now = performance.now(), dt = Math.max(1, now - lastMoveT);
+    // smoothed velocity so a flick carries on after the finger lifts
+    vx = vx * 0.6 + ((dx * 0.011) / dt) * 0.4;
+    vy = vy * 0.6 + ((dy * 0.011) / dt) * 0.4;
+    lastMoveT = now;
+    lastTouch = now;
   });
-  const endDrag = () => { dragging = false; lastTouch = performance.now(); };
+  const endDrag = () => {
+    dragging = false;
+    const now = performance.now();
+    if (now - lastMoveT > 80) vx = vy = 0; // finger rested before lifting: no fling
+    lastTouch = now;
+  };
   canvas.addEventListener('pointerup', endDrag);
   canvas.addEventListener('pointercancel', endDrag);
 
@@ -221,17 +233,50 @@ export function createCube() {
     el.insertBefore(canvas, el.firstChild);
     ro.observe(el);
     idleSpin = spin;
+    vx = vy = 0;
     fit();
+    intro = reduce ? null : performance.now();
   }
+  let intro = null; // start time of the scale-in when the cube appears on a screen
 
+  // ease-out with a small overshoot, so a layer lands with a soft settle instead of a hard stop
+  const settle = (t) => { const c = 1.25; return 1 + (c + 1) * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2); };
+  const smooth = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+  let prevT = performance.now();
   function frame(now) {
+    const dt = Math.min(64, now - prevT);
+    prevT = now;
     if (anim) {
       const t = Math.min(1, (now - anim.t0) / anim.dur);
-      const e = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+      const e = anim.dur < 220 ? smooth(t) : settle(t);
       anim.pivot.rotation[anim.axis] = anim.angle * e;
       if (t >= 1) finish();
     }
-    if (idleSpin && !dragging && !reduce && now - lastTouch > 2500) group.rotateOnWorldAxis(Y, 0.0035);
+    if (!dragging && (Math.abs(vx) > 1e-5 || Math.abs(vy) > 1e-5)) {
+      group.rotateOnWorldAxis(Y, vx * dt);
+      group.rotateOnWorldAxis(X, vy * dt);
+      const k = Math.pow(0.994, dt); // friction
+      vx *= k; vy *= k;
+      lastTouch = now;
+    }
+    if (idleSpin && !dragging && !reduce && now - lastTouch > 2500) {
+      // ease the idle spin in rather than starting at full speed
+      const ramp = Math.min(1, (now - lastTouch - 2500) / 1200);
+      group.rotateOnWorldAxis(Y, 0.00021 * ramp * dt);
+    }
+    if (intro != null) {
+      const t = Math.min(1, (now - intro) / 700);
+      group.scale.setScalar(0.82 + 0.18 * settle(t));
+      if (t >= 1) intro = null;
+    }
+    const blend = 1 - Math.exp(-dt / 70);
+    for (const c of cubies) for (const s of c.userData.stickers) {
+      const tg = s.userData.target;
+      if (tg && !s.material.color.equals(tg)) {
+        s.material.color.lerp(tg, blend);
+        if (Math.abs(s.material.color.r - tg.r) + Math.abs(s.material.color.g - tg.g) + Math.abs(s.material.color.b - tg.b) < 0.004) s.material.color.copy(tg);
+      }
+    }
     if (tracked) {
       const k = 0.16 + 0.14 * Math.sin(now / 260);
       tracked.userData.stickers.forEach((s) => s.material.emissive.setRGB(k, k, k));
