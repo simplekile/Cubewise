@@ -1,10 +1,19 @@
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
+import { execSync } from 'node:child_process';
+
+// version shown in Settings, so the learner can tell which build is running
+const sha = (process.env.GITHUB_SHA || (() => { try { return execSync('git rev-parse HEAD').toString(); } catch { return 'dev'; } })()).trim().slice(0, 7);
+const vn = new Date(Date.now() + 7 * 3600e3); // Vietnam time, UTC+7
+const two = (n) => String(n).padStart(2, '0');
+const when = `${two(vn.getUTCHours())}:${two(vn.getUTCMinutes())} ${two(vn.getUTCDate())}/${two(vn.getUTCMonth() + 1)}`;
+const VERSION = `${process.env.GITHUB_RUN_NUMBER ? `Bản ${process.env.GITHUB_RUN_NUMBER} · ` : ''}${sha} · ${when}`;
 
 // base './' keeps every path relative, so the same build works on GitHub Pages
 // (served from /Cubewise/) and on any other static host.
 export default defineConfig({
   base: './',
+  define: { __VERSION__: JSON.stringify(VERSION) },
   build: { chunkSizeWarningLimit: 800 },
   plugins: [
     VitePWA({

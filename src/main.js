@@ -40,6 +40,8 @@ function nextToast() {
   setTimeout(() => { el.classList.remove('show'); setTimeout(nextToast, 300); }, 1400);
 }
 
+$('#version').textContent = `Phiên bản ${__VERSION__}`;
+
 // ---------- confetti: small squares in the six sticker colours ----------
 const CONF = ['#FFD43B', '#F4F6FA', '#1FB86E', '#2F6BFF', '#E3343F', '#FF7A1A'];
 const still = () => state.settings.calm || matchMedia('(prefers-reduced-motion: reduce)').matches;
