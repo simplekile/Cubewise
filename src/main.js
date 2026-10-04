@@ -1,13 +1,14 @@
 import './style.css';
 import {
   createIcons, House, Box, Timer, Map, Flame, Rotate3d, RotateCcw, RotateCw, ArrowRight, ChevronLeft, ChevronRight,
-  SkipBack, Play, Undo2, Repeat, Shuffle, Check, Lock, BookOpen, Sparkles, BookX, Gauge, Zap, Trophy, X, Circle, Settings, Download, Upload, Trash2,
+  SkipBack, Play, Undo2, Repeat, Shuffle, Check, Lock, BookOpen, Sparkles, BookX, Gauge, Zap, Trophy, X, Circle, Settings, Download, Upload, Trash2, LockKeyhole, LockKeyholeOpen,
 } from 'lucide';
 import { createCube, invertMove } from './cube.js';
 import { LESSONS, LEVELS, lessonsOf, byId } from './lessons.js';
+import { viewAt } from './views.js';
 import { load, save, wipe, today, levelOf, aoN, fmt, defaults } from './store.js';
 
-const ICONS = { House, Box, Timer, Map, Flame, Rotate3d, RotateCcw, RotateCw, ArrowRight, ChevronLeft, ChevronRight, SkipBack, Play, Undo2, Repeat, Shuffle, Check, Lock, BookOpen, Sparkles, BookX, Gauge, Zap, Trophy, X, Circle, Settings, Download, Upload, Trash2 };
+const ICONS = { House, Box, Timer, Map, Flame, Rotate3d, RotateCcw, RotateCw, ArrowRight, ChevronLeft, ChevronRight, SkipBack, Play, Undo2, Repeat, Shuffle, Check, Lock, BookOpen, Sparkles, BookX, Gauge, Zap, Trophy, X, Circle, Settings, Download, Upload, Trash2, LockKeyhole, LockKeyholeOpen };
 const icons = () => createIcons({ icons: ICONS });
 
 const $ = (s) => document.querySelector(s);
@@ -257,8 +258,10 @@ let L = null, li = 0, answered = false, missed = false;
 
 function openLesson(id) {
   L = byId(id);
+  freeLook = false;
   go('s-lesson');
   cube.mount($('#stage-learn'), { spin: false });
+  cube.pose();
   $('#lessonTitle').textContent = L.title;
   const siblings = lessonsOf(L.cap);
   const at = siblings.indexOf(L);
@@ -273,6 +276,22 @@ function openLesson(id) {
   lessonReset();
 }
 
+// camera follows the lesson: locked to the angle the caption talks about, zoomed where it matters
+let freeLook = false;
+function viewFor(i) {
+  const v = viewAt(L.id, i);
+  cube.lock(v.lock && !freeLook);
+  if (!freeLook || !v.lock) cube.view(v.view);
+  const b = $('#lookBtn');
+  b.hidden = !v.lock;
+  b.innerHTML = `<i data-lucide="${freeLook ? 'lock-keyhole-open' : 'lock-keyhole'}"></i>${freeLook ? 'Đang xoay tự do' : 'Góc nhìn cố định'}`;
+  b.setAttribute('aria-pressed', String(freeLook));
+  icons();
+}
+$('#lookBtn').addEventListener('click', () => {
+  freeLook = !freeLook;
+  if (L) viewFor(li);
+});
 function highlightAt(i) {
   let dim = L.dim || null;
   for (let j = 0; j < i; j++) if ('dim' in L.steps[j]) dim = L.steps[j].dim;
@@ -305,24 +324,24 @@ function lessonUi() {
 }
 function lessonReset() {
   cube.reset();
-  cube.pose();
   if (L.setup?.length) cube.apply(L.setup);
   li = 0;
   highlightAt(0);
+  viewFor(0);
   lessonUi();
 }
 $('#lNext').addEventListener('click', () => {
   if (!L || cube.busy()) return;
   if (li >= L.steps.length) { lessonReset(); return; }
   const s = L.steps[li];
-  const after = () => { li++; highlightAt(li); lessonUi(); if (li === L.steps.length) $('#quiz').scrollIntoView?.({ behavior: 'smooth', block: 'nearest' }); };
+  const after = () => { li++; highlightAt(li); viewFor(li); lessonUi(); if (li === L.steps.length) $('#quiz').scrollIntoView?.({ behavior: 'smooth', block: 'nearest' }); };
   if (s.m) cube.turn(s.m, turnMs()).then(after); else after();
 });
 $('#lPrev').addEventListener('click', () => {
   if (!L || cube.busy() || li <= 0) return;
   li--;
   const s = L.steps[li];
-  const after = () => { highlightAt(li); lessonUi(); };
+  const after = () => { highlightAt(li); viewFor(li); lessonUi(); };
   if (s.m) cube.turn(invertMove(s.m), turnMs()).then(after); else after();
 });
 $('#lReset').addEventListener('click', () => { if (L) lessonReset(); });

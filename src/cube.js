@@ -12,6 +12,23 @@ const FACE = {
 };
 const DIM = new THREE.Color(0x2a2a33);
 
+// Diagonal stripes multiplied over a sticker, so the tracked piece reads clearly on any color, white included.
+function stripeTexture() {
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const g = c.getContext('2d');
+  g.fillStyle = '#ffffff';
+  g.fillRect(0, 0, 64, 64);
+  g.strokeStyle = '#2b2b33';
+  g.lineWidth = 11;
+  for (let i = -64; i <= 128; i += 32) { g.beginPath(); g.moveTo(i, 0); g.lineTo(i + 64, 64); g.stroke(); }
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(2.6, 2.6);
+  return t;
+}
+const STRIPES = stripeTexture();
+
 // face letter -> [axis, layer, sign of a clockwise quarter turn]
 const MOVES = { R: ['x', 1, -1], L: ['x', -1, 1], U: ['y', 1, -1], D: ['y', -1, 1], F: ['z', 1, -1], B: ['z', -1, 1] };
 
@@ -176,7 +193,12 @@ export function createCube() {
         s.material.emissive.setHex(0x000000);
       }
       const h = c.userData.home;
-      if (trackHome && h[0] === trackHome[0] && h[1] === trackHome[1] && h[2] === trackHome[2]) tracked = c;
+      const isTracked = trackHome && h[0] === trackHome[0] && h[1] === trackHome[1] && h[2] === trackHome[2];
+      if (isTracked) tracked = c;
+      for (const s of c.userData.stickers) {
+        const want = isTracked ? STRIPES : null;
+        if (s.material.map !== want) { s.material.map = want; s.material.needsUpdate = true; }
+      }
     }
   }
 
@@ -185,7 +207,14 @@ export function createCube() {
   let vx = 0, vy = 0; // drag velocity in radians per ms, kept after release for inertia
   let lastMoveT = 0;
   const Y = new THREE.Vector3(0, 1, 0), X = new THREE.Vector3(1, 0, 0);
+  let locked = false;
+  // camera view: orientation the cube eases to, how close the camera sits, and which point is centered
+  let viewQ = null;
+  let zoomNow = 1, zoomTo = 1;
+  const focusNow = new THREE.Vector3(), focusTo = new THREE.Vector3();
   canvas.addEventListener('pointerdown', (e) => {
+    if (locked) return;
+    viewQ = null; // the learner takes over the orientation
     dragging = true; lx = e.clientX; ly = e.clientY; vx = vy = 0; lastMoveT = performance.now();
     canvas.setPointerCapture(e.pointerId);
     lastTouch = performance.now();
@@ -215,6 +244,7 @@ export function createCube() {
   // ----- sizing -----
   let host = null;
   let lift = 0;
+  let baseZ = 12;
   const ro = new ResizeObserver(fit);
   function fit() {
     if (!host) return;
@@ -223,7 +253,8 @@ export function createCube() {
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
     const base = Number(host.dataset.dist || 12);
-    camera.position.set(0, lift, camera.aspect < 1 ? (base / camera.aspect) * 0.85 : base);
+    baseZ = camera.aspect < 1 ? (base / camera.aspect) * 0.85 : base;
+    camera.position.set(0, lift, baseZ / zoomNow);
     camera.lookAt(0, lift, 0);
     camera.updateProjectionMatrix();
   }
@@ -235,6 +266,8 @@ export function createCube() {
     ro.observe(el);
     idleSpin = spin;
     vx = vy = 0;
+    locked = false; viewQ = null;
+    zoomNow = zoomTo = 1; focusNow.set(0, 0, 0); focusTo.set(0, 0, 0); group.position.set(0, 0, 0);
     fit();
     intro = reduce ? null : performance.now();
   }
@@ -270,6 +303,20 @@ export function createCube() {
       group.scale.setScalar(0.82 + 0.18 * settle(t));
       if (t >= 1) intro = null;
     }
+    // ease toward the requested view
+    const ease = reduce ? 1 : 1 - Math.exp(-dt / 140);
+    if (viewQ && !dragging) {
+      group.quaternion.slerp(viewQ, ease);
+      if (group.quaternion.angleTo(viewQ) < 0.0005) group.quaternion.copy(viewQ);
+    }
+    if (Math.abs(zoomNow - zoomTo) > 0.0005 || focusNow.distanceToSquared(focusTo) > 1e-7) {
+      zoomNow += (zoomTo - zoomNow) * ease;
+      focusNow.lerp(focusTo, ease);
+      camera.position.z = baseZ / zoomNow;
+    }
+    // keep the focus point (in cube coordinates) at the center of the frame
+    group.position.copy(focusNow).applyQuaternion(group.quaternion).multiplyScalar(-group.scale.x);
+    if (tracked && !reduce) STRIPES.offset.x = (now / 2600) % 1;
     const blend = 1 - Math.exp(-dt / 70);
     for (const c of cubies) for (const s of c.userData.stickers) {
       const tg = s.userData.target;
@@ -279,7 +326,7 @@ export function createCube() {
       }
     }
     if (tracked) {
-      const k = 0.16 + 0.14 * Math.sin(now / 260);
+      const k = 0.06 + 0.06 * Math.sin(now / 300);
       tracked.userData.stickers.forEach((s) => s.material.emissive.setRGB(k, k, k));
     }
     if (host && host.offsetParent !== null) renderer.render(scene, camera);
@@ -288,5 +335,17 @@ export function createCube() {
   requestAnimationFrame(frame);
 
   const setCalm = (on) => { reduce = osReduce || on; };
-  return { mount, turn, seq, apply, reset, stop, busy, highlight, pose, setCalm };
+  // view({ yaw, pitch, zoom, focus: [x, y, z] }) eases the camera there; lock(true) stops drag-to-rotate
+  function view(v) {
+    const q = new THREE.Quaternion().setFromAxisAngle(Y, v.yaw ?? -0.72);
+    q.premultiply(new THREE.Quaternion().setFromAxisAngle(X, v.pitch ?? 0.5));
+    viewQ = q;
+    zoomTo = v.zoom ?? 1;
+    focusTo.set(...(v.focus || [0, 0, 0]));
+    vx = vy = 0;
+    idleSpin = false;
+  }
+  const lock = (on) => { locked = on; if (on) { dragging = false; vx = vy = 0; } };
+  const isLocked = () => locked;
+  return { mount, turn, seq, apply, reset, stop, busy, highlight, pose, setCalm, view, lock, isLocked };
 }

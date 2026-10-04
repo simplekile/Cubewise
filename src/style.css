@@ -336,3 +336,9 @@ button.bd { border: 0; background: none; padding: 0; color: inherit; font: inher
 
 /* user-chosen calm mode */
 .calm *, .calm *::before, .calm *::after { animation: none !important; transition: none !important; }
+
+/* lesson stage: lock toggle for the camera */
+.look { position: absolute; left: 10px; top: 8px; display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border: 0; border-radius: 99px;
+  background: rgba(255,255,255,.07); color: var(--muted); font-size: 11.5px; }
+.look .lucide { width: 13px; height: 13px; }
+.look[aria-pressed="true"] { color: var(--fg); background: rgba(255,255,255,.14); }
