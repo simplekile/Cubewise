@@ -23,9 +23,12 @@
       <div class="top">
         <div>
           <p class="eyebrow" id="today"></p>
-          <h1>Chào bạn</h1>
+          <h1 id="hello">Chào bạn</h1>
         </div>
-        <span class="chip" id="streakChip" title="Chuỗi ngày tập"><i data-lucide="flame"></i><span id="streakNum">0</span></span>
+        <div class="top-actions">
+          <span class="chip" id="streakChip" title="Chuỗi ngày tập"><i data-lucide="flame"></i><span id="streakNum">0</span></span>
+          <button class="round small" data-go="s-settings" aria-label="Cài đặt"><i data-lucide="settings"></i></button>
+        </div>
       </div>
 
       <div class="stage hero" id="stage-home" data-dist="13" data-lift="-0.75">
@@ -114,6 +117,64 @@
       <button class="ghost center" id="dropLast" hidden><i data-lucide="x"></i>Bỏ lần vừa rồi</button>
     </section>
 
+    <!-- SETTINGS -->
+    <section class="screen" id="s-settings" aria-label="Cài đặt" hidden>
+      <div class="row" style="justify-content:flex-start;gap:14px">
+        <button class="round" data-go="s-home" aria-label="Về trang chủ"><i data-lucide="chevron-left"></i></button>
+        <h1>Cài đặt</h1>
+      </div>
+
+      <div class="set-group">
+        <p class="eyebrow">Bạn</p>
+        <label class="set-row">
+          <span>Tên của bạn</span>
+          <input id="setName" type="text" maxlength="24" placeholder="Để trống cũng được" autocomplete="nickname">
+        </label>
+      </div>
+
+      <div class="set-group">
+        <p class="eyebrow">Bài học</p>
+        <div class="set-row col">
+          <span>Tốc độ vặn khối</span>
+          <div class="seg" data-set="speed" role="radiogroup" aria-label="Tốc độ vặn khối">
+            <button data-v="slow">Chậm</button><button data-v="mid">Vừa</button><button data-v="fast">Nhanh</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="set-group">
+        <p class="eyebrow">Đồng hồ</p>
+        <label class="set-row">
+          <span><b>15 giây quan sát</b><small>Chạm một lần để xem khối trước, rồi giữ và thả để bắt đầu</small></span>
+          <input type="checkbox" class="switch" id="setInspect">
+        </label>
+        <div class="set-row col">
+          <span>Giữ bao lâu thì sẵn sàng</span>
+          <div class="seg" data-set="hold" role="radiogroup" aria-label="Thời gian giữ">
+            <button data-v="short">Ngắn · 0,3 giây</button><button data-v="long">Dài · 0,55 giây</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="set-group">
+        <p class="eyebrow">Hiển thị</p>
+        <label class="set-row">
+          <span><b>Giảm hiệu ứng</b><small>Tắt chuyển cảnh và hoạt ảnh, khối vặn tức thì</small></span>
+          <input type="checkbox" class="switch" id="setCalm">
+        </label>
+      </div>
+
+      <div class="set-group">
+        <p class="eyebrow">Dữ liệu</p>
+        <p class="small muted">Tiến độ chỉ lưu trên máy này. Sao lưu ra tệp để chuyển sang máy khác hoặc phòng khi xóa dữ liệu trình duyệt.</p>
+        <button class="set-row btn" id="exportBtn"><span>Sao lưu tiến độ</span><i data-lucide="download"></i></button>
+        <label class="set-row btn"><span>Khôi phục từ tệp sao lưu</span><i data-lucide="upload"></i><input type="file" id="importFile" accept="application/json,.json" hidden></label>
+        <button class="set-row btn danger" id="wipe"><span>Xóa toàn bộ tiến độ</span><i data-lucide="trash-2"></i></button>
+      </div>
+
+      <p class="note">Cubewise · tiến độ của bạn không rời khỏi máy</p>
+    </section>
+
     <!-- JOURNEY -->
     <section class="screen" id="s-path" aria-label="Hành trình" hidden>
       <h1>Hành trình</h1>
@@ -121,8 +182,6 @@
 
       <div class="row"><h2>Thành tựu</h2><span class="small muted" id="achCount"></span></div>
       <div class="badges" id="badges"></div>
-
-      <button class="link" id="wipe">Xóa toàn bộ tiến độ</button>
     </section>
   </div>
 

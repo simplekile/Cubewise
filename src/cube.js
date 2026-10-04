@@ -35,7 +35,8 @@ function roundedSquare(w, r) {
 }
 
 export function createCube() {
-  const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  const osReduce = !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  let reduce = osReduce;
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.setClearColor(0x000000, 0);
@@ -286,5 +287,6 @@ export function createCube() {
   }
   requestAnimationFrame(frame);
 
-  return { mount, turn, seq, apply, reset, stop, busy, highlight, pose };
+  const setCalm = (on) => { reduce = osReduce || on; };
+  return { mount, turn, seq, apply, reset, stop, busy, highlight, pose, setCalm };
 }

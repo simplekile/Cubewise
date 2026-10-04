@@ -1,13 +1,13 @@
 import './style.css';
 import {
   createIcons, House, Box, Timer, Map, Flame, Rotate3d, RotateCcw, RotateCw, ArrowRight, ChevronLeft, ChevronRight,
-  SkipBack, Play, Undo2, Repeat, Shuffle, Check, Lock, BookOpen, Sparkles, BookX, Gauge, Zap, Trophy, X, Circle,
+  SkipBack, Play, Undo2, Repeat, Shuffle, Check, Lock, BookOpen, Sparkles, BookX, Gauge, Zap, Trophy, X, Circle, Settings, Download, Upload, Trash2,
 } from 'lucide';
 import { createCube, invertMove } from './cube.js';
 import { LESSONS, LEVELS, lessonsOf, byId } from './lessons.js';
-import { load, save, wipe, today, levelOf, aoN, fmt } from './store.js';
+import { load, save, wipe, today, levelOf, aoN, fmt, defaults } from './store.js';
 
-const ICONS = { House, Box, Timer, Map, Flame, Rotate3d, RotateCcw, RotateCw, ArrowRight, ChevronLeft, ChevronRight, SkipBack, Play, Undo2, Repeat, Shuffle, Check, Lock, BookOpen, Sparkles, BookX, Gauge, Zap, Trophy, X, Circle };
+const ICONS = { House, Box, Timer, Map, Flame, Rotate3d, RotateCcw, RotateCw, ArrowRight, ChevronLeft, ChevronRight, SkipBack, Play, Undo2, Repeat, Shuffle, Check, Lock, BookOpen, Sparkles, BookX, Gauge, Zap, Trophy, X, Circle, Settings, Download, Upload, Trash2 };
 const icons = () => createIcons({ icons: ICONS });
 
 const $ = (s) => document.querySelector(s);
@@ -121,7 +121,7 @@ function passGate() {
 
 // ---------- navigation ----------
 let current = 's-home';
-const ORDER = ['s-home', 's-learn', 's-lesson', 's-train', 's-path'];
+const ORDER = ['s-settings', 's-home', 's-learn', 's-lesson', 's-train', 's-path'];
 // stagger children in: each gets an index the CSS turns into a delay
 function stagger(el, cls) {
   [...el.children].forEach((c, i) => c.style.setProperty('--i', Math.min(i, 10)));
@@ -153,6 +153,7 @@ function go(id) {
   if (id === 's-learn') renderLessonList();
   if (id === 's-train') { cube.reset(); cube.pose(); cube.mount($('#stage-train'), { spin: true }); cube.apply(scramble); renderStats(); }
   if (id === 's-path') renderPath();
+  if (id === 's-settings') renderSettings();
 }
 document.addEventListener('click', (e) => {
   const b = e.target.closest('[data-go]');
@@ -166,6 +167,7 @@ function nextLesson() {
 function renderHome() {
   const d = new Date().toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'long' });
   $('#today').textContent = d.charAt(0).toUpperCase() + d.slice(1);
+  $('#hello').textContent = state.settings.name ? `Chào ${state.settings.name}` : 'Chào bạn';
   const s = streakNow();
   $('#streakNum').textContent = s;
   $('#streakChip').classList.toggle('off', s === 0);
@@ -250,6 +252,7 @@ $('#lessonList').addEventListener('click', (e) => {
 });
 
 // ---------- lesson player ----------
+const turnMs = () => ({ slow: 800, mid: 480, fast: 260 })[state.settings.speed] || 480;
 let L = null, li = 0, answered = false, missed = false;
 
 function openLesson(id) {
@@ -313,14 +316,14 @@ $('#lNext').addEventListener('click', () => {
   if (li >= L.steps.length) { lessonReset(); return; }
   const s = L.steps[li];
   const after = () => { li++; highlightAt(li); lessonUi(); if (li === L.steps.length) $('#quiz').scrollIntoView?.({ behavior: 'smooth', block: 'nearest' }); };
-  if (s.m) cube.turn(s.m, 480).then(after); else after();
+  if (s.m) cube.turn(s.m, turnMs()).then(after); else after();
 });
 $('#lPrev').addEventListener('click', () => {
   if (!L || cube.busy() || li <= 0) return;
   li--;
   const s = L.steps[li];
   const after = () => { highlightAt(li); lessonUi(); };
-  if (s.m) cube.turn(invertMove(s.m), 480).then(after); else after();
+  if (s.m) cube.turn(invertMove(s.m), turnMs()).then(after); else after();
 });
 $('#lReset').addEventListener('click', () => { if (L) lessonReset(); });
 $('#lSix').addEventListener('click', async () => {
@@ -445,17 +448,43 @@ function renderStats() {
 }
 
 let tState = 'idle', holdT = 0, t0 = 0, raf = 0;
+let inspecting = false, inspT = 0, inspEnd = 0;
 const tEl = $('#timer'), tm = $('#tm'), hint = $('#tmHint');
+const IDLE_HINT = () => (state.settings.inspect ? 'Chạm để bắt đầu 15 giây quan sát' : 'Giữ rồi thả để bắt đầu');
+function startInspection() {
+  inspecting = true;
+  inspEnd = performance.now() + 15000;
+  hint.textContent = 'Đang quan sát · giữ rồi thả để bắt đầu giải';
+  const tick = () => {
+    if (!inspecting) return;
+    const left = Math.ceil((inspEnd - performance.now()) / 1000);
+    if (tState !== 'hold' && tState !== 'ready') {
+      tm.textContent = left > 0 ? String(left) : '0';
+      tEl.classList.toggle('late', left <= 3);
+    }
+    if (left <= 0) hint.textContent = 'Hết 15 giây quan sát · giữ rồi thả để bắt đầu';
+    inspT = setTimeout(tick, 200);
+  };
+  tick();
+}
+function stopInspection() { inspecting = false; clearTimeout(inspT); tEl.classList.remove('late'); }
 function press() {
   if (tState === 'run') { stopRun(); return; }
   if (tState !== 'idle' && tState !== 'done') return;
-  tState = 'hold'; tEl.className = 'timer hold'; tm.textContent = '0.00';
+  if (state.settings.inspect && !inspecting) { tState = 'inspectStart'; $('#dropLast').hidden = true; startInspection(); return; }
+  tState = 'hold'; tEl.className = 'timer hold'; if (!inspecting) tm.textContent = '0.00';
   $('#dropLast').hidden = true;
-  holdT = setTimeout(() => { if (tState === 'hold') { tState = 'ready'; tEl.className = 'timer ready'; hint.textContent = 'Thả để bắt đầu'; } }, 350);
+  holdT = setTimeout(() => { if (tState === 'hold') { tState = 'ready'; tEl.className = 'timer ready'; tm.textContent = '0.00'; hint.textContent = 'Thả để bắt đầu'; } }, state.settings.hold === 'long' ? 550 : 300);
 }
 function release() {
-  if (tState === 'hold') { clearTimeout(holdT); tState = 'idle'; tEl.className = 'timer'; hint.textContent = 'Giữ rồi thả để bắt đầu'; return; }
+  if (tState === 'inspectStart') { tState = 'idle'; return; }
+  if (tState === 'hold') {
+    clearTimeout(holdT); tState = 'idle'; tEl.className = 'timer';
+    hint.textContent = inspecting ? 'Đang quan sát · giữ rồi thả để bắt đầu giải' : IDLE_HINT();
+    return;
+  }
   if (tState === 'ready') {
+    stopInspection();
     tState = 'run'; tEl.className = 'timer'; hint.textContent = 'Chạm để dừng';
     t0 = performance.now();
     const tick = () => { tm.textContent = fmt((performance.now() - t0) / 1000); raf = requestAnimationFrame(tick); };
@@ -465,8 +494,9 @@ function release() {
 function cancelTimer() {
   if (tState === 'run' || tState === 'hold' || tState === 'ready') {
     cancelAnimationFrame(raf); clearTimeout(holdT);
-    tState = 'idle'; tEl.className = 'timer'; tm.textContent = '0.00'; hint.textContent = 'Giữ rồi thả để bắt đầu';
+    tState = 'idle'; tEl.className = 'timer'; tm.textContent = '0.00'; hint.textContent = IDLE_HINT();
   }
+  if (inspecting) { stopInspection(); tState = 'idle'; tm.textContent = '0.00'; hint.textContent = IDLE_HINT(); }
 }
 function stopRun() {
   cancelAnimationFrame(raf);
@@ -487,7 +517,7 @@ function stopRun() {
     state.flags.pb = true;
     hint.textContent = 'Kỷ lục mới';
     addXp(25, 'kỷ lục mới');
-  } else hint.textContent = 'Đã lưu · giữ để giải tiếp';
+  } else hint.textContent = state.settings.inspect ? 'Đã lưu · chạm để quan sát lần tiếp' : 'Đã lưu · giữ để giải tiếp';
   save(state);
   checkAch();
   renderStats();
@@ -589,7 +619,10 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#she
 
 $('#wipe').addEventListener('click', () => {
   if (!confirm('Xóa toàn bộ XP, bài đã học, các lần giải và thành tựu? Không thể hoàn tác.')) return;
+  const keep = state.settings;
   state = wipe();
+  state.settings = keep;
+  save(state);
   renderAll();
   go('s-home');
 });
@@ -599,6 +632,7 @@ function renderAll() {
   if (current === 's-path') renderPath();
   if (current === 's-learn') renderLessonList();
   if (current === 's-train') renderStats();
+  if (current === 's-settings') renderSettings();
 }
 
 // ---------- tab bar hides while scrolling down, comes back on the way up ----------
@@ -613,7 +647,70 @@ function renderAll() {
   }, { passive: true }));
 }
 
+// ---------- settings ----------
+function applySettings() {
+  const calm = !!state.settings.calm;
+  document.documentElement.classList.toggle('calm', calm);
+  cube.setCalm(calm);
+  if (tState === 'idle') hint.textContent = IDLE_HINT();
+}
+function renderSettings() {
+  const st = state.settings;
+  $('#setName').value = st.name;
+  $('#setInspect').checked = st.inspect;
+  $('#setCalm').checked = st.calm;
+  $$('.seg[data-set]').forEach((g) => g.querySelectorAll('button').forEach((b) => {
+    const on = st[g.dataset.set] === b.dataset.v;
+    b.classList.toggle('on', on);
+    b.setAttribute('role', 'radio');
+    b.setAttribute('aria-checked', String(on));
+  }));
+}
+function setSetting(k, v) {
+  state.settings[k] = v;
+  save(state);
+  applySettings();
+  renderSettings();
+}
+$('#setName').addEventListener('input', (e) => { state.settings.name = e.target.value.trim().slice(0, 24); save(state); });
+$('#setName').addEventListener('change', () => renderHome());
+$('#setInspect').addEventListener('change', (e) => setSetting('inspect', e.target.checked));
+$('#setCalm').addEventListener('change', (e) => setSetting('calm', e.target.checked));
+$$('.seg[data-set]').forEach((g) => g.addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-v]');
+  if (b) setSetting(g.dataset.set, b.dataset.v);
+}));
+$('#exportBtn').addEventListener('click', () => {
+  const blob = new Blob([JSON.stringify({ app: 'cubewise', version: 1, savedAt: new Date().toISOString(), state }, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `cubewise-sao-luu-${today()}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  toast('Đã tạo tệp sao lưu');
+});
+$('#importFile').addEventListener('change', async (e) => {
+  const f = e.target.files?.[0];
+  e.target.value = '';
+  if (!f) return;
+  try {
+    const data = JSON.parse(await f.text());
+    const s = data?.state;
+    if (data?.app !== 'cubewise' || !s || typeof s.xp !== 'number' || !Array.isArray(s.solves)) throw new Error('bad');
+    if (!confirm('Thay tiến độ hiện tại bằng bản sao lưu này?')) return;
+    state = { ...load(), ...s, settings: { ...defaults(), ...(s.settings || {}) } };
+    save(state);
+    applySettings();
+    renderAll();
+    renderSettings();
+    toast('Đã khôi phục tiến độ');
+  } catch {
+    toast('Tệp này không phải bản sao lưu Cubewise');
+  }
+});
+
 // ---------- start ----------
+applySettings();
 icons();
 checkAch();
 go('s-home');

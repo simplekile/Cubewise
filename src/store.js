@@ -13,12 +13,23 @@ const fresh = () => ({
   streak: { day: '', count: 0 },
   ach: {},          // achievementId -> date earned
   flags: {},        // selfSolve, noBook, six
+  settings: defaults(),
+});
+export const defaults = () => ({
+  name: '',         // shown in the greeting
+  speed: 'mid',     // lesson turn speed: slow | mid | fast
+  inspect: false,   // 15 s inspection before a timed solve
+  hold: 'short',    // how long to hold the timer before it is ready: short | long
+  calm: false,      // reduce motion
 });
 
 export function load() {
   try {
     const raw = localStorage.getItem(KEY);
-    if (raw) return { ...fresh(), ...JSON.parse(raw) };
+    if (raw) {
+      const saved = JSON.parse(raw);
+      return { ...fresh(), ...saved, settings: { ...defaults(), ...(saved.settings || {}) } };
+    }
   } catch { /* private mode or corrupt data: start over */ }
   return fresh();
 }
