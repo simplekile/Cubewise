@@ -1,0 +1,523 @@
+import './style.css';
+import {
+  createIcons, House, Box, Timer, Map, Flame, Rotate3d, RotateCcw, RotateCw, ArrowRight, ChevronLeft, ChevronRight,
+  SkipBack, Play, Repeat, Shuffle, Check, Lock, BookOpen, Sparkles, BookX, Gauge, Zap, Trophy, X, Circle,
+} from 'lucide';
+import { createCube, invertMove } from './cube.js';
+import { LESSONS, LEVELS, lessonsOf, byId } from './lessons.js';
+import { load, save, wipe, today, levelOf, aoN, fmt } from './store.js';
+
+const ICONS = { House, Box, Timer, Map, Flame, Rotate3d, RotateCcw, RotateCw, ArrowRight, ChevronLeft, ChevronRight, SkipBack, Play, Repeat, Shuffle, Check, Lock, BookOpen, Sparkles, BookX, Gauge, Zap, Trophy, X, Circle };
+const icons = () => createIcons({ icons: ICONS });
+
+const $ = (s) => document.querySelector(s);
+const $$ = (s) => [...document.querySelectorAll(s)];
+const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+
+let state = load();
+const cube = createCube();
+
+// ---------- toast ----------
+const toastQ = [];
+let toastBusy = false;
+function toast(text) {
+  toastQ.push(text);
+  if (!toastBusy) nextToast();
+}
+function nextToast() {
+  const t = toastQ.shift();
+  if (!t) { toastBusy = false; return; }
+  toastBusy = true;
+  const el = $('#toast');
+  el.textContent = t;
+  el.classList.add('show');
+  setTimeout(() => { el.classList.remove('show'); setTimeout(nextToast, 300); }, 1400);
+}
+
+// ---------- XP, streak, achievements ----------
+function addXp(v, why) {
+  const before = levelOf(state.xp).level;
+  state.xp += v;
+  const after = levelOf(state.xp).level;
+  toast(`+${v} XP · ${why}`);
+  if (after > before) toast(`Lên level ${after}`);
+  save(state);
+  renderHome();
+}
+
+function touchDay() {
+  const d = today();
+  if (state.streak.day === d) return;
+  const y = new Date(); y.setDate(y.getDate() - 1);
+  const yd = y.toLocaleDateString('en-CA');
+  state.streak = { day: d, count: state.streak.day === yd ? state.streak.count + 1 : 1 };
+}
+function streakNow() {
+  const y = new Date(); y.setDate(y.getDate() - 1);
+  const alive = state.streak.day === today() || state.streak.day === y.toLocaleDateString('en-CA');
+  return alive ? state.streak.count : 0;
+}
+
+const bestOf = () => (state.solves.length ? Math.min(...state.solves.map((s) => s.t)) : null);
+const ACH = [
+  { id: 'first', name: 'Bài học đầu tiên', icon: 'book-open', tone: 't-blue', test: () => Object.keys(state.done).length > 0 },
+  { id: 'home', name: 'Nhà của mảnh', icon: 'box', tone: 't-blue', test: () => !!state.done['c0-pieces'] },
+  { id: 'solve', name: 'Giải lần đầu', icon: 'sparkles', tone: 't-green', test: () => !!state.flags.selfSolve },
+  { id: 'nobook', name: 'Không cần sách', icon: 'book-x', tone: 't-red', test: () => !!state.flags.noBook },
+  { id: 'comm', name: 'Thợ commutator', icon: 'repeat', tone: 't-gold', test: () => state.quizRun >= 10, progress: () => `${Math.min(state.quizRun, 10)}/10` },
+  { id: 'six', name: 'Chu kỳ 6', icon: 'rotate-cw', tone: 't-blue', test: () => !!state.flags.six },
+  { id: 'timer', name: 'Bấm giờ đầu tiên', icon: 'timer', tone: 't-orange', test: () => state.solves.length > 0 },
+  { id: 'sub2', name: 'Dưới 2 phút', icon: 'gauge', tone: 't-orange', test: () => bestOf() != null && bestOf() < 120 },
+  { id: 'sub1', name: 'Dưới 1 phút', icon: 'zap', tone: 't-orange', test: () => bestOf() != null && bestOf() < 60 },
+  { id: 'st3', name: 'Chuỗi 3 ngày', icon: 'flame', tone: 't-red', test: () => state.streak.count >= 3, progress: () => `${Math.min(streakNow(), 3)}/3` },
+  { id: 'st7', name: 'Chuỗi 7 ngày', icon: 'flame', tone: 't-red', test: () => state.streak.count >= 7, progress: () => `${Math.min(streakNow(), 7)}/7` },
+  { id: 'st30', name: 'Chuỗi 30 ngày', icon: 'flame', tone: 't-gold', test: () => state.streak.count >= 30, progress: () => `${Math.min(streakNow(), 30)}/30` },
+  { id: 'pb', name: 'Kỷ lục mới', icon: 'trophy', tone: 't-gold', test: () => !!state.flags.pb },
+];
+function checkAch() {
+  for (const a of ACH) {
+    if (!state.ach[a.id] && a.test()) {
+      state.ach[a.id] = today();
+      toast(`Thành tựu: ${a.name}`);
+      addXp(30, 'thành tựu');
+    }
+  }
+  save(state);
+}
+
+// ---------- milestones ----------
+const TIME_GOAL = { 2: 120, 3: 60 };
+const goalText = (sec) => (sec % 60 === 0 ? `${sec / 60} phút` : `${sec} giây`);
+const LAST_GATE = 3; // levels after this have no content yet
+function gateInfo(n) {
+  const ls = lessonsOf(n);
+  const reqs = [];
+  if (ls.length) {
+    const d = ls.filter((l) => state.done[l.id]).length;
+    reqs.push({ ok: d === ls.length, text: `Học xong ${d}/${ls.length} bài` });
+  }
+  if (n === 1) reqs.push({ ok: !!state.flags.selfSolve, text: 'Tự giải được khối thật', self: true });
+  if (TIME_GOAL[n]) {
+    const a = aoN(state.solves, 12);
+    const goal = TIME_GOAL[n];
+    reqs.push({
+      ok: a != null && a < goal,
+      text: a == null ? `Ao12 dưới ${goalText(goal)} · cần thêm ${12 - state.solves.length} lần giải` : `Ao12 dưới ${goalText(goal)} · hiện ${fmt(a)}`,
+    });
+  }
+  return { reqs, ready: n <= LAST_GATE && reqs.every((r) => r.ok) };
+}
+function passGate() {
+  const n = state.cap;
+  if (!gateInfo(n).ready) return;
+  state.cap = n + 1;
+  toast(`Qua mốc cấp ${n}`);
+  addXp(100 * (n + 1), `mốc cấp ${n}`);
+  checkAch();
+  renderAll();
+}
+
+// ---------- navigation ----------
+let current = 's-home';
+function go(id) {
+  if (current === 's-train' && id !== 's-train') cancelTimer();
+  current = id;
+  $$('.screen').forEach((s) => { s.hidden = s.id !== id; if (s.id === id) s.scrollTop = 0; });
+  const tab = id === 's-lesson' ? 's-learn' : id;
+  $$('.tab').forEach((t) => t.classList.toggle('on', t.dataset.go === tab));
+  cube.stop();
+  if (id === 's-home') { cube.reset(); cube.pose(); cube.mount($('#stage-home'), { spin: true }); $('#lastMove').textContent = ''; renderHome(); }
+  if (id === 's-learn') renderLessonList();
+  if (id === 's-train') { cube.reset(); cube.pose(); cube.mount($('#stage-train'), { spin: true }); cube.apply(scramble); renderStats(); }
+  if (id === 's-path') renderPath();
+}
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-go]');
+  if (b) go(b.dataset.go);
+});
+
+// ---------- home ----------
+function nextLesson() {
+  return LESSONS.find((l) => l.cap <= state.cap && !state.done[l.id]);
+}
+function renderHome() {
+  const d = new Date().toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'long' });
+  $('#today').textContent = d.charAt(0).toUpperCase() + d.slice(1);
+  const s = streakNow();
+  $('#streakNum').textContent = s;
+  $('#streakChip').classList.toggle('off', s === 0);
+
+  const lv = levelOf(state.xp);
+  $('#lvlNum').textContent = lv.level;
+  $('#lvl').textContent = lv.level;
+  $('#xpNow').textContent = lv.now;
+  $('#xpNeed').textContent = lv.need;
+  $('#xpBar').style.width = `${Math.round((lv.now / lv.need) * 100)}%`;
+  const cap = LEVELS[Math.min(state.cap, LEVELS.length - 1)];
+  $('#capName').textContent = `Cấp ${cap.n} · ${cap.name}`;
+
+  const cta = $('#homeCtaText');
+  const next = nextLesson();
+  if (gateInfo(state.cap).ready) { cta.textContent = `Nhận mốc cấp ${state.cap}`; homeAction = () => go('s-path'); }
+  else if (next) { cta.textContent = `${Object.keys(state.done).length ? 'Học tiếp' : 'Bắt đầu'}: ${next.title}`; homeAction = () => openLesson(next.id); }
+  else if (state.cap === 1 && !state.flags.selfSolve) { cta.textContent = 'Thử giải khối thật'; homeAction = () => go('s-path'); }
+  else { cta.textContent = 'Luyện với đồng hồ'; homeAction = () => go('s-train'); }
+}
+let homeAction = () => {};
+$('#homeCta').addEventListener('click', () => homeAction());
+
+let prime = false;
+$('#primeKey').addEventListener('click', (e) => {
+  prime = !prime;
+  e.currentTarget.classList.toggle('on', prime);
+  e.currentTarget.setAttribute('aria-pressed', String(prime));
+  $$('.key[data-m]').forEach((k) => { k.textContent = k.dataset.m + (prime ? "'" : ''); });
+});
+$$('.key[data-m]').forEach((k) => k.addEventListener('click', () => {
+  const m = k.dataset.m + (prime ? "'" : '');
+  $('#lastMove').textContent = m;
+  cube.turn(m, 240);
+}));
+$('#resetKey').addEventListener('click', () => { cube.reset(); $('#lastMove').textContent = ''; });
+
+// ---------- lesson list ----------
+function renderLessonList() {
+  const html = [];
+  for (const lv of LEVELS.slice(0, 3)) {
+    const ls = lessonsOf(lv.n);
+    const open = lv.n <= state.cap;
+    const d = ls.filter((l) => state.done[l.id]).length;
+    html.push(`<div class="group"><div class="group-head"><h2>Cấp ${lv.n} · ${esc(lv.name)}</h2><span class="small muted">${open ? `${d}/${ls.length}` : '<i data-lucide="lock" style="width:14px;height:14px"></i>'}</span></div>`);
+    for (const l of ls) {
+      const done = !!state.done[l.id];
+      const sub = l.solution ? l.solution.join(' ') : `${l.steps.length} bước`;
+      html.push(`<button class="lrow" data-lesson="${l.id}" ${open ? '' : 'disabled'}>
+        <span class="tick ${done ? 'done' : ''}">${done ? '<i data-lucide="check"></i>' : ''}</span>
+        <span class="t"><b>${esc(l.title)}</b><span>${esc(sub)}</span></span>
+        ${done ? '' : open ? '<span class="xp">+20 XP</span>' : ''}
+        <i data-lucide="chevron-right"></i></button>`);
+    }
+    html.push('</div>');
+  }
+  html.push(`<p class="note">Cấp 3 trở đi chủ yếu là luyện tốc độ. Bài CFOP sẽ có ở bản sau.</p>`);
+  $('#lessonList').innerHTML = html.join('');
+  icons();
+}
+$('#lessonList').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-lesson]');
+  if (b && !b.disabled) openLesson(b.dataset.lesson);
+});
+
+// ---------- lesson player ----------
+let L = null, li = 0, answered = false, missed = false;
+
+function openLesson(id) {
+  L = byId(id);
+  go('s-lesson');
+  cube.mount($('#stage-learn'), { spin: false });
+  $('#lessonTitle').textContent = L.title;
+  const siblings = lessonsOf(L.cap);
+  const at = siblings.indexOf(L);
+  $('#lessonSteps').innerHTML = siblings.map((_, i) => `<i class="${i < at ? 'on' : i === at ? 'cur' : ''}"></i>`).join('');
+  $('#lessonSteps').setAttribute('aria-label', `Bài ${at + 1} trên ${siblings.length}`);
+  $('#lSix').hidden = !L.six;
+  const hasMoves = L.steps.every((s) => s.m);
+  $('#seq').hidden = !hasMoves;
+  $('#seq').classList.toggle('compact', L.steps.length > 6);
+  $('#seq').innerHTML = hasMoves ? L.steps.map((s) => `<span class="mv">${esc(s.m)}</span>`).join('') : '';
+  renderQuiz();
+  lessonReset();
+}
+
+function highlightAt(i) {
+  let dim = L.dim || null;
+  for (let j = 0; j < i; j++) if ('dim' in L.steps[j]) dim = L.steps[j].dim;
+  cube.highlight(dim, L.track);
+}
+function textAt(i) {
+  let t = L.intro;
+  for (let j = 0; j < i; j++) if (L.steps[j].text) t = L.steps[j].text;
+  return t;
+}
+function lessonUi() {
+  const n = L.steps.length;
+  $$('#seq .mv').forEach((el, i) => { el.className = `mv${i < li ? ' done' : i === li ? ' next' : ''}`; });
+  $('#lessonBadge').textContent = `${li}/${n}`;
+  $('#whyText').innerHTML = textAt(li);
+  $('#lPrev').disabled = li === 0;
+  $('#lNext').disabled = li >= n;
+  const end = li >= n;
+  $('#quiz').hidden = !end;
+  $('#lessonDone').hidden = !(end && answered);
+  $('#selfBox').hidden = !(end && answered && L.selfReport);
+  if (end && answered && L.selfReport) renderSelf($('#selfBox'));
+}
+function lessonReset() {
+  cube.reset();
+  cube.pose();
+  if (L.setup?.length) cube.apply(L.setup);
+  li = 0;
+  highlightAt(0);
+  lessonUi();
+}
+$('#lNext').addEventListener('click', () => {
+  if (!L || cube.busy() || li >= L.steps.length) return;
+  const s = L.steps[li];
+  const after = () => { li++; highlightAt(li); lessonUi(); if (li === L.steps.length) $('#quiz').scrollIntoView?.({ behavior: 'smooth', block: 'nearest' }); };
+  if (s.m) cube.turn(s.m, 480).then(after); else after();
+});
+$('#lPrev').addEventListener('click', () => {
+  if (!L || cube.busy() || li <= 0) return;
+  li--;
+  const s = L.steps[li];
+  const after = () => { highlightAt(li); lessonUi(); };
+  if (s.m) cube.turn(invertMove(s.m), 480).then(after); else after();
+});
+$('#lReset').addEventListener('click', () => { if (L) lessonReset(); });
+$('#lSix').addEventListener('click', async () => {
+  if (!L || cube.busy()) return;
+  lessonReset();
+  const moves = [];
+  for (let i = 0; i < 6; i++) moves.push(...L.solution);
+  $('#whyText').innerHTML = `Đang chạy ${esc(L.solution.join(' '))} 6 lần liên tiếp, tổng ${moves.length} nước…`;
+  $('#lNext').disabled = true;
+  await cube.seq(moves, 170);
+  if (current !== 's-lesson') return;
+  $('#whyText').innerHTML = 'Khối đã trở lại trạng thái ban đầu. Commutator này có <b>chu kỳ 6</b>: làm 6 lần là về như cũ.';
+  $('#lessonBadge').textContent = `${moves.length}/${moves.length}`;
+  $('#lNext').disabled = false;
+  if (!state.flags.six) { state.flags.six = true; checkAch(); }
+});
+
+function renderQuiz() {
+  answered = false; missed = false;
+  const q = L.quiz;
+  $('#quizTag').textContent = state.quiz[L.id] ? 'Câu hỏi vì sao' : 'Câu hỏi vì sao · +10 XP';
+  $('#quizQ').textContent = q.q;
+  $('#opts').innerHTML = q.opts.map((o, i) => `<button class="opt" data-i="${i}"><span class="k">${'ABC'[i]}</span>${esc(o)}</button>`).join('');
+  $('#fb').hidden = true;
+}
+$('#opts').addEventListener('click', (e) => {
+  const b = e.target.closest('.opt');
+  if (!b || answered) return;
+  const ok = Number(b.dataset.i) === L.quiz.ok;
+  const fb = $('#fb');
+  fb.hidden = false;
+  if (!ok) {
+    b.classList.add('wrong');
+    fb.className = 'feedback no';
+    fb.innerHTML = `<b>Chưa đúng.</b> Gợi ý: ${esc(L.quiz.hint)}`;
+    if (!missed) { missed = true; state.quizRun = 0; save(state); }
+    return;
+  }
+  answered = true;
+  b.classList.add('right');
+  fb.className = 'feedback ok';
+  fb.innerHTML = `<b>Đúng rồi.</b> ${esc(L.quiz.right)}`;
+  if (!missed) state.quizRun += 1;
+  if (!state.quiz[L.id]) { state.quiz[L.id] = true; addXp(10, 'câu hỏi vì sao'); }
+  if (!state.done[L.id]) {
+    state.done[L.id] = today();
+    touchDay();
+    addXp(20, 'xong bài');
+  }
+  save(state);
+  checkAch();
+  const next = LESSONS[LESSONS.indexOf(L) + 1];
+  const nextOpen = next && next.cap <= state.cap;
+  $('#lessonDoneText').textContent = nextOpen ? `Bài tiếp: ${next.title}` : gateInfo(state.cap).ready ? `Nhận mốc cấp ${state.cap}` : 'Xong';
+  lessonUi();
+});
+$('#lessonDone').addEventListener('click', () => {
+  const next = LESSONS[LESSONS.indexOf(L) + 1];
+  if (next && next.cap <= state.cap) openLesson(next.id);
+  else if (gateInfo(state.cap).ready) go('s-path');
+  else go('s-learn');
+});
+
+// self-report: the app cannot see the real cube, so the learner tells it
+function renderSelf(el) {
+  const f = state.flags;
+  el.innerHTML = `<p class="small muted">Đã thử trên khối thật chưa?</p>
+    <button class="ghost ${f.selfSolve ? 'on' : ''}" data-flag="selfSolve"><i data-lucide="${f.selfSolve ? 'check' : 'circle'}"></i>Tôi đã tự giải được khối thật</button>
+    ${f.selfSolve ? `<button class="ghost ${f.noBook ? 'on' : ''}" data-flag="noBook"><i data-lucide="${f.noBook ? 'check' : 'circle'}"></i>Giải được mà không nhìn hướng dẫn</button>` : ''}`;
+  icons();
+}
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-flag]');
+  if (!b) return;
+  const k = b.dataset.flag;
+  if (state.flags[k]) return;
+  state.flags[k] = true;
+  touchDay();
+  save(state);
+  checkAch();
+  renderAll();
+  if (current === 's-lesson') lessonUi();
+});
+
+// ---------- timer ----------
+const FACES = ['U', 'D', 'R', 'L', 'F', 'B'];
+const AXIS = { U: 0, D: 0, R: 1, L: 1, F: 2, B: 2 };
+const SUF = ['', "'", '2'];
+function genScramble() {
+  const out = [];
+  let last = -1, prev = null;
+  while (out.length < 20) {
+    const f = FACES[Math.floor(Math.random() * 6)];
+    // no same face twice, and no X Y X on one axis (e.g. R L R)
+    if (f === prev || (AXIS[f] === last && out.length > 1 && out[out.length - 2][0] === f)) continue;
+    last = AXIS[f]; prev = f;
+    out.push(f + SUF[Math.floor(Math.random() * 3)]);
+  }
+  return out;
+}
+let scramble = genScramble();
+function newScramble() {
+  scramble = genScramble();
+  $('#scr').textContent = scramble.join(' ');
+  cube.reset(); cube.pose(); cube.apply(scramble);
+}
+$('#scr').textContent = scramble.join(' ');
+$('#newScr').addEventListener('click', () => { if (tState === 'idle' || tState === 'done') newScramble(); });
+
+function renderStats() {
+  $('#ao5').textContent = fmt(aoN(state.solves, 5));
+  $('#ao12').textContent = fmt(aoN(state.solves, 12));
+  $('#best').textContent = fmt(bestOf());
+  const goal = TIME_GOAL[state.cap] ?? TIME_GOAL[Math.min(Math.max(state.cap, 2), 3)];
+  const a12 = aoN(state.solves, 12);
+  const gap = $('#gap');
+  if (a12 == null) gap.textContent = `Cần ${12 - state.solves.length} lần giải nữa để tính Ao12`;
+  else if (a12 < goal) gap.textContent = `Ao12 đã dưới ${goalText(goal)}`;
+  else gap.textContent = `Còn ${(a12 - goal).toFixed(1)} giây nữa là Ao12 dưới ${goalText(goal)}`;
+  const t = state.timerXp.day === today() ? state.timerXp.xp : 0;
+  gap.textContent += ` · XP đồng hồ hôm nay ${t}/50`;
+}
+
+let tState = 'idle', holdT = 0, t0 = 0, raf = 0;
+const tEl = $('#timer'), tm = $('#tm'), hint = $('#tmHint');
+function press() {
+  if (tState === 'run') { stopRun(); return; }
+  if (tState !== 'idle' && tState !== 'done') return;
+  tState = 'hold'; tEl.className = 'timer hold'; tm.textContent = '0.00';
+  $('#dropLast').hidden = true;
+  holdT = setTimeout(() => { if (tState === 'hold') { tState = 'ready'; tEl.className = 'timer ready'; hint.textContent = 'Thả để bắt đầu'; } }, 350);
+}
+function release() {
+  if (tState === 'hold') { clearTimeout(holdT); tState = 'idle'; tEl.className = 'timer'; hint.textContent = 'Giữ, thả để bắt đầu'; return; }
+  if (tState === 'ready') {
+    tState = 'run'; tEl.className = 'timer'; hint.textContent = 'Chạm để dừng';
+    t0 = performance.now();
+    const tick = () => { tm.textContent = fmt((performance.now() - t0) / 1000); raf = requestAnimationFrame(tick); };
+    tick();
+  }
+}
+function cancelTimer() {
+  if (tState === 'run' || tState === 'hold' || tState === 'ready') {
+    cancelAnimationFrame(raf); clearTimeout(holdT);
+    tState = 'idle'; tEl.className = 'timer'; tm.textContent = '0.00'; hint.textContent = 'Giữ, thả để bắt đầu';
+  }
+}
+function stopRun() {
+  cancelAnimationFrame(raf);
+  const s = Math.round((performance.now() - t0) / 10) / 100;
+  tm.textContent = fmt(s);
+  tState = 'stopping';
+  setTimeout(() => { if (tState === 'stopping') tState = 'done'; }, 250);
+  if (s < 3) { hint.textContent = 'Quá nhanh, có lẽ chạm nhầm. Chưa lưu.'; return; }
+  const prevBest = bestOf();
+  state.solves.push({ t: s, at: Date.now() });
+  if (state.solves.length > 500) state.solves.splice(0, state.solves.length - 500);
+  touchDay();
+  const d = today();
+  if (state.timerXp.day !== d) state.timerXp = { day: d, xp: 0 };
+  if (state.timerXp.xp < 50) { state.timerXp.xp += 5; addXp(5, 'giải tính giờ'); }
+  if (prevBest != null && s < prevBest && state.solves.length > 5) {
+    state.flags.pb = true;
+    hint.textContent = 'Kỷ lục mới';
+    addXp(25, 'kỷ lục mới');
+  } else hint.textContent = 'Đã lưu · giữ để giải tiếp';
+  save(state);
+  checkAch();
+  renderStats();
+  $('#dropLast').hidden = false;
+  newScramble();
+}
+$('#dropLast').addEventListener('click', () => {
+  state.solves.pop();
+  save(state);
+  renderStats();
+  $('#dropLast').hidden = true;
+  tm.textContent = '0.00';
+  hint.textContent = 'Đã bỏ lần vừa rồi';
+});
+tEl.addEventListener('pointerdown', (e) => { e.preventDefault(); press(); });
+tEl.addEventListener('pointerup', release);
+tEl.addEventListener('pointercancel', release);
+tEl.addEventListener('pointerleave', () => { if (tState === 'hold') release(); });
+tEl.addEventListener('contextmenu', (e) => e.preventDefault());
+document.addEventListener('keydown', (e) => {
+  if (current !== 's-train' || e.code !== 'Space') return;
+  e.preventDefault();
+  if (!e.repeat) press();
+});
+document.addEventListener('keyup', (e) => {
+  if (current !== 's-train' || e.code !== 'Space') return;
+  e.preventDefault();
+  release();
+});
+
+// ---------- journey ----------
+function renderPath() {
+  const out = [];
+  for (const lv of LEVELS) {
+    const n = lv.n;
+    const cls = n < state.cap ? 'done' : n === state.cap ? 'cur' : 'lock';
+    const orb = n < state.cap ? '<i data-lucide="check"></i>' : n;
+    let body = `<b>${esc(lv.name)}</b>`;
+    if (cls === 'cur') {
+      if (n > LAST_GATE) body += '<span class="small muted">Nội dung cấp này sẽ có ở bản sau. Cứ luyện đồng hồ nhé.</span>';
+      else {
+        const g = gateInfo(n);
+        body += g.reqs.filter((r) => !r.self).map((r) => `<span class="req ${r.ok ? 'ok' : ''}"><i data-lucide="${r.ok ? 'check' : 'circle'}"></i>${esc(r.text)}</span>`).join('');
+        if (n === 1) body += '<div class="self-path"></div>';
+        if (g.ready) body += `<button class="cta" id="gateBtn"><span>Nhận mốc · +${100 * (n + 1)} XP</span><span class="go"><i data-lucide="arrow-right"></i></span></button>`;
+      }
+    } else if (cls === 'lock') {
+      body += `<span class="small muted">${esc(lv.goal)}</span>`;
+    }
+    out.push(`<div class="node ${cls}"><div class="rail"><div class="orb">${orb}</div></div><div class="body">${body}</div></div>`);
+  }
+  $('#path').innerHTML = out.join('');
+  const sp = $('#path .self-path');
+  if (sp) { renderSelf(sp); sp.classList.add('self'); sp.style.alignItems = 'flex-start'; sp.firstElementChild.remove(); }
+  $('#gateBtn')?.addEventListener('click', passGate);
+
+  const got = ACH.filter((a) => state.ach[a.id]).length;
+  $('#achCount').textContent = `${got}/${ACH.length}`;
+  $('#badges').innerHTML = ACH.map((a) => {
+    const has = !!state.ach[a.id];
+    const prog = !has && a.progress ? `<small>${a.progress()}</small>` : '';
+    return `<div class="bd ${has ? '' : 'lock'}"><div class="ic ${has ? a.tone : ''}"><i data-lucide="${has ? a.icon : 'lock'}"></i></div><span>${esc(a.name)}</span>${prog}</div>`;
+  }).join('');
+  icons();
+}
+$('#wipe').addEventListener('click', () => {
+  if (!confirm('Xóa toàn bộ XP, bài đã học, lần giải và thành tựu?')) return;
+  state = wipe();
+  renderAll();
+  go('s-home');
+});
+
+function renderAll() {
+  renderHome();
+  if (current === 's-path') renderPath();
+  if (current === 's-learn') renderLessonList();
+  if (current === 's-train') renderStats();
+}
+
+// ---------- start ----------
+icons();
+checkAch();
+go('s-home');

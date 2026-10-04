@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0B0B0F">
+  <meta name="description" content="Học giải Rubik 3x3 từ con số 0, hiểu vì sao từng nước đi hoạt động.">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Cubewise">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="icon" type="image/png" href="icons/icon-192.png">
+  <title>Cubewise</title>
+</head>
+<body>
+<div class="app" id="app">
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <div class="screens">
+
+    <!-- HOME -->
+    <section class="screen" id="s-home" aria-label="Trang chủ">
+      <div class="top">
+        <div>
+          <p class="eyebrow" id="today"></p>
+          <h1>Chào bạn</h1>
+        </div>
+        <span class="chip" id="streakChip" title="Chuỗi ngày tập"><i data-lucide="flame"></i><span id="streakNum">0</span></span>
+      </div>
+
+      <div class="stage hero" id="stage-home" data-dist="13" data-lift="-0.75">
+        <div class="hint"><i data-lucide="rotate-3d"></i>Kéo để xoay</div>
+        <div class="badge" id="lastMove"></div>
+        <div class="pad" role="group" aria-label="Vặn khối">
+          <button class="key" data-m="R" style="--c:#FF7A1A">R</button>
+          <button class="key" data-m="L" style="--c:#E3343F">L</button>
+          <button class="key" data-m="U" style="--c:#FFD43B">U</button>
+          <button class="key" data-m="D" style="--c:#F4F6FA">D</button>
+          <button class="key" data-m="F" style="--c:#1FB86E">F</button>
+          <button class="key" data-m="B" style="--c:#2F6BFF">B</button>
+          <button class="key" id="primeKey" aria-pressed="false" title="Đổi sang chiều ngược kim đồng hồ">'</button>
+          <button class="key" id="resetKey" aria-label="Đưa khối về trạng thái đã giải"><i data-lucide="rotate-ccw"></i></button>
+        </div>
+      </div>
+
+      <button class="progress" data-go="s-path" aria-label="Xem hành trình">
+        <span class="lvl-badge" id="lvlNum">1</span>
+        <span class="pg-body">
+          <b id="capName">Cấp 0 · Làm quen</b>
+          <span class="bar"><i id="xpBar"></i></span>
+          <span class="small muted">Level <span id="lvl">1</span> · <span id="xpNow">0</span>/<span id="xpNeed">100</span> XP</span>
+        </span>
+      </button>
+
+      <button class="cta" id="homeCta"><span id="homeCtaText">Bắt đầu</span><span class="go"><i data-lucide="arrow-right"></i></span></button>
+    </section>
+
+    <!-- LESSON LIST -->
+    <section class="screen" id="s-learn" aria-label="Bài học" hidden>
+      <h1>Bài học</h1>
+      <div id="lessonList" class="lesson-list"></div>
+    </section>
+
+    <!-- LESSON PLAYER -->
+    <section class="screen" id="s-lesson" aria-label="Bài học" hidden>
+      <div class="row">
+        <button class="round" data-go="s-learn" aria-label="Về danh sách bài"><i data-lucide="chevron-left"></i></button>
+        <div style="flex:1"><div class="steps" id="lessonSteps"></div></div>
+      </div>
+      <h1 class="lesson-title" id="lessonTitle"></h1>
+
+      <div class="stage learn" id="stage-learn" data-dist="11.8">
+        <div class="badge" id="lessonBadge"></div>
+      </div>
+
+      <div class="seq" id="seq"></div>
+
+      <p class="why-text" id="whyText"></p>
+
+      <div class="controls">
+        <button class="round" id="lPrev" aria-label="Bước trước"><i data-lucide="skip-back"></i></button>
+        <button class="round main" id="lNext" aria-label="Bước tiếp"><i data-lucide="play"></i></button>
+        <button class="round" id="lReset" aria-label="Làm lại từ đầu"><i data-lucide="rotate-ccw"></i></button>
+        <button class="round" id="lSix" aria-label="Lặp 6 lần" title="Lặp 6 lần" hidden><i data-lucide="repeat"></i></button>
+      </div>
+
+      <div class="card" id="quiz" hidden>
+        <p class="eyebrow" id="quizTag">Câu hỏi vì sao · +10 XP</p>
+        <h3 class="quiz-q" id="quizQ"></h3>
+        <div class="opts" id="opts"></div>
+        <div class="feedback" id="fb" hidden></div>
+      </div>
+
+      <div class="self" id="selfBox" hidden></div>
+
+      <button class="cta" id="lessonDone" hidden><span id="lessonDoneText">Bài tiếp</span><span class="go"><i data-lucide="arrow-right"></i></span></button>
+    </section>
+
+    <!-- TRAIN -->
+    <section class="screen" id="s-train" aria-label="Luyện tập" hidden>
+      <div class="top"><h1>Đồng hồ</h1><button class="round" id="newScr" aria-label="Đổi scramble"><i data-lucide="shuffle"></i></button></div>
+      <p class="scramble" id="scr"></p>
+      <div class="stage train" id="stage-train" data-dist="13.5"></div>
+      <button class="timer" id="timer" aria-label="Giữ rồi thả để bắt đầu, chạm để dừng">
+        <span class="tm" id="tm">0.00</span>
+        <span class="small muted" id="tmHint">Giữ, thả để bắt đầu</span>
+      </button>
+      <div class="stat3">
+        <div class="stat"><span class="small muted">Ao5</span><b id="ao5">–</b></div>
+        <div class="stat"><span class="small muted">Ao12</span><b id="ao12">–</b></div>
+        <div class="stat"><span class="small muted">Tốt nhất</span><b id="best">–</b></div>
+      </div>
+      <p class="note" id="gap"></p>
+      <button class="ghost center" id="dropLast" hidden><i data-lucide="x"></i>Bỏ lần vừa rồi</button>
+    </section>
+
+    <!-- JOURNEY -->
+    <section class="screen" id="s-path" aria-label="Hành trình" hidden>
+      <h1>Hành trình</h1>
+      <div class="path" id="path"></div>
+
+      <div class="row"><h2>Thành tựu</h2><span class="small muted" id="achCount"></span></div>
+      <div class="badges" id="badges"></div>
+
+      <button class="link" id="wipe">Xóa toàn bộ tiến độ</button>
+    </section>
+  </div>
+
+  <nav class="tabbar" aria-label="Điều hướng chính">
+    <button class="tab on" data-go="s-home"><i data-lucide="house"></i>Trang chủ</button>
+    <button class="tab" data-go="s-learn"><i data-lucide="box"></i>Học</button>
+    <button class="tab" data-go="s-train"><i data-lucide="timer"></i>Luyện tập</button>
+    <button class="tab" data-go="s-path"><i data-lucide="map"></i>Hành trình</button>
+  </nav>
+</div>
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>
