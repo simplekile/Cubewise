@@ -187,7 +187,7 @@ function go(id) {
     s.style.setProperty('--dx', `${dir * 18}px`);
     stagger(s, 'enter');
   });
-  $('.tabbar').classList.remove('away');
+  showBar();
   const tab = id === 's-lesson' ? 's-learn' : id;
   $$('.tab').forEach((t, i) => {
     const on = t.dataset.go === tab;
@@ -703,17 +703,30 @@ function renderAll() {
   if (current === 's-settings') renderSettings();
 }
 
-// ---------- tab bar hides while scrolling down, comes back on the way up ----------
-{
-  const bar = $('.tabbar');
-  $$('.screen').forEach((sc) => sc.addEventListener('scroll', () => {
-    const y = sc.scrollTop, dy = y - (sc.lastY || 0);
-    if (Math.abs(dy) < 6) return;
-    const atEnd = y + sc.clientHeight >= sc.scrollHeight - 4;
-    bar.classList.toggle('away', dy > 0 && y > 40 && !atEnd);
-    sc.lastY = y;
-  }, { passive: true }));
+// ---------- tab bar: hides while scrolling down or after a few idle seconds; scrolling up brings it back ----------
+const bar = $('.tabbar');
+const IDLE_MS = 3000;
+let idleT = 0;
+function showBar() {
+  bar.classList.remove('away');
+  clearTimeout(idleT);
+  idleT = setTimeout(() => bar.classList.add('away'), IDLE_MS);
 }
+function hideBar() { clearTimeout(idleT); bar.classList.add('away'); }
+// a tap on empty space toggles the bar; taps on buttons, the cube or fields only keep it from timing out
+const ACTIVE = 'button, a, input, select, textarea, label, canvas, .tabbar, .sheet, [data-go], [data-lesson]';
+document.addEventListener('click', (e) => {
+  const away = bar.classList.contains('away');
+  if (e.target.closest(ACTIVE)) { if (!away) showBar(); return; }
+  if (away) showBar(); else hideBar();
+});
+$$('.screen').forEach((sc) => sc.addEventListener('scroll', () => {
+  const y = sc.scrollTop, dy = y - (sc.lastY || 0);
+  if (Math.abs(dy) < 6) return;
+  const atEnd = y + sc.clientHeight >= sc.scrollHeight - 4;
+  if (dy > 0 && y > 40 && !atEnd) hideBar(); else showBar();
+  sc.lastY = y;
+}, { passive: true }));
 
 // ---------- settings ----------
 function applySettings() {
