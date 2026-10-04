@@ -301,3 +301,8 @@ button.bd { border: 0; background: none; padding: 0; color: inherit; font: inher
 .sheet-state.ok { color: var(--green); }
 .sheet-card .ghost { margin-top: 6px; min-width: 120px; }
 @media (prefers-reduced-motion: reduce) { .sheet-card, .sheet-scrim { transition: none; } .sheet.open .sheet-card .ic { animation: none; } }
+
+/* tab bar slides away while reading down, back when scrolling up */
+.tabbar { transition: transform .45s var(--glide), opacity .3s ease; }
+.tabbar.away { transform: translateY(calc(100% + 24px + var(--bottom))); opacity: 0; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { .tabbar { transition: opacity .2s ease; } .tabbar.away { transform: none; } }

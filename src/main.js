@@ -137,9 +137,11 @@ function go(id) {
     s.hidden = s.id !== id;
     if (s.id !== id) return;
     s.scrollTop = 0;
+    s.lastY = 0;
     s.style.setProperty('--dx', `${dir * 18}px`);
     stagger(s, 'enter');
   });
+  $('.tabbar').classList.remove('away');
   const tab = id === 's-lesson' ? 's-learn' : id;
   $$('.tab').forEach((t, i) => {
     const on = t.dataset.go === tab;
@@ -597,6 +599,18 @@ function renderAll() {
   if (current === 's-path') renderPath();
   if (current === 's-learn') renderLessonList();
   if (current === 's-train') renderStats();
+}
+
+// ---------- tab bar hides while scrolling down, comes back on the way up ----------
+{
+  const bar = $('.tabbar');
+  $$('.screen').forEach((sc) => sc.addEventListener('scroll', () => {
+    const y = sc.scrollTop, dy = y - (sc.lastY || 0);
+    if (Math.abs(dy) < 6) return;
+    const atEnd = y + sc.clientHeight >= sc.scrollHeight - 4;
+    bar.classList.toggle('away', dy > 0 && y > 40 && !atEnd);
+    sc.lastY = y;
+  }, { passive: true }));
 }
 
 // ---------- start ----------
