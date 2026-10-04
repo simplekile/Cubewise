@@ -40,13 +40,50 @@ function nextToast() {
   setTimeout(() => { el.classList.remove('show'); setTimeout(nextToast, 300); }, 1400);
 }
 
+// ---------- confetti: small squares in the six sticker colours ----------
+const CONF = ['#FFD43B', '#F4F6FA', '#1FB86E', '#2F6BFF', '#E3343F', '#FF7A1A'];
+const still = () => state.settings.calm || matchMedia('(prefers-reduced-motion: reduce)').matches;
+function confetti(x, y, n = 36, spread = 1) {
+  if (still()) return;
+  const cv = document.createElement('canvas');
+  cv.className = 'confetti';
+  const app = $('#app'), r = app.getBoundingClientRect(), dpr = Math.min(2, devicePixelRatio || 1);
+  cv.width = r.width * dpr; cv.height = r.height * dpr;
+  app.appendChild(cv);
+  const g = cv.getContext('2d');
+  g.scale(dpr, dpr);
+  const ox = x - r.left, oy = y - r.top;
+  const bits = Array.from({ length: n }, (_, i) => {
+    const a = -Math.PI / 2 + (Math.random() - 0.5) * 2.2 * spread, v = 0.35 + Math.random() * 0.45 * spread;
+    return { x: ox, y: oy, vx: Math.cos(a) * v, vy: Math.sin(a) * v, s: 5 + Math.random() * 4, rot: Math.random() * 6, vr: (Math.random() - 0.5) * 0.02, c: CONF[i % 6] };
+  });
+  const t0 = performance.now(), life = 1500 + 300 * spread;
+  let prev = t0;
+  (function tick(now) {
+    const dt = Math.min(32, now - prev), t = now - t0;
+    prev = now;
+    g.clearRect(0, 0, r.width, r.height);
+    g.globalAlpha = Math.max(0, 1 - Math.max(0, t - life * 0.6) / (life * 0.4));
+    for (const b of bits) {
+      b.vy += 0.0011 * dt; b.vx *= 0.992; b.vy *= 0.992;
+      b.x += b.vx * dt; b.y += b.vy * dt; b.rot += b.vr * dt;
+      g.save(); g.translate(b.x, b.y); g.rotate(b.rot);
+      g.fillStyle = b.c; g.beginPath(); g.roundRect(-b.s / 2, -b.s / 2, b.s, b.s * 0.8, 1.5); g.fill();
+      g.restore();
+    }
+    if (t < life) requestAnimationFrame(tick); else cv.remove();
+  })(t0);
+}
+const burstAt = (el, n, spread) => { const b = el.getBoundingClientRect(); confetti(b.left + b.width / 2, b.top + b.height / 2, n, spread); };
+const bigBurst = () => { const r = $('#app').getBoundingClientRect(); confetti(r.left + r.width / 2, r.top + r.height * 0.45, 90, 1.6); };
+
 // ---------- XP, streak, achievements ----------
 function addXp(v, why) {
   const before = levelOf(state.xp).level;
   state.xp += v;
   const after = levelOf(state.xp).level;
   toast(`+${v} XP · ${why}`);
-  if (after > before) toast(`Lên level ${after}`);
+  if (after > before) { toast(`Lên level ${after}`); bigBurst(); }
   save(state);
   renderHome();
 }
@@ -120,6 +157,7 @@ function passGate() {
   if (!gateInfo(n).ready) return;
   state.cap = n + 1;
   toast(`Qua mốc cấp ${n}`);
+  bigBurst();
   addXp(100 * (n + 1), `mốc cấp ${n}`);
   checkAch();
   renderAll();
@@ -392,6 +430,9 @@ $('#opts').addEventListener('click', (e) => {
   fb.innerHTML = `<b>Đúng rồi.</b> ${swatch(esc(L.quiz.right))}`;
   if (!missed) state.quizRun += 1;
   if (!state.quiz[L.id]) { state.quiz[L.id] = true; addXp(10, 'câu hỏi vì sao'); }
+  // the lesson is done: the cube lights up and takes a bow, confetti from the right answer
+  cube.celebrate();
+  burstAt(b, state.done[L.id] ? 18 : 40, 1);
   if (!state.done[L.id]) {
     state.done[L.id] = today();
     touchDay();
@@ -540,6 +581,7 @@ function stopRun() {
   if (prevBest != null && s < prevBest && state.solves.length > 5) {
     state.flags.pb = true;
     hint.textContent = 'Kỷ lục mới';
+    burstAt(tEl, 50, 1.3);
     addXp(25, 'kỷ lục mới');
   } else hint.textContent = state.settings.inspect ? 'Đã lưu · chạm để quan sát lần tiếp' : 'Đã lưu · giữ để giải tiếp';
   save(state);

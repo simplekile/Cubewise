@@ -209,7 +209,7 @@ export function createCube() {
   const Y = new THREE.Vector3(0, 1, 0), X = new THREE.Vector3(1, 0, 0);
   let locked = false;
   // camera view: orientation the cube eases to, how close the camera sits, and which point is centered
-  let viewQ = null;
+  let viewQ = null, party = null;
   let zoomNow = 1, zoomTo = 1;
   const focusNow = new THREE.Vector3(), focusTo = new THREE.Vector3();
   canvas.addEventListener('pointerdown', (e) => {
@@ -298,6 +298,13 @@ export function createCube() {
       const ramp = Math.min(1, (now - lastTouch - 2500) / 1200);
       group.rotateOnWorldAxis(Y, 0.00021 * ramp * dt);
     }
+    if (party != null) {
+      // one full turn with a little hop: the "done" moment
+      const t = Math.min(1, (now - party) / 1100);
+      scene.rotation.y = Math.PI * 2 * smooth(t);
+      group.scale.setScalar(1 + 0.08 * Math.sin(Math.PI * Math.min(1, t * 1.6)));
+      if (t >= 1) { party = null; scene.rotation.y = 0; group.scale.setScalar(1); }
+    }
     if (intro != null) {
       const t = Math.min(1, (now - intro) / 700);
       group.scale.setScalar(0.82 + 0.18 * settle(t));
@@ -334,6 +341,11 @@ export function createCube() {
   }
   requestAnimationFrame(frame);
 
+  function celebrate() {
+    highlight(null, null);
+    zoomTo = 1; focusTo.set(0, 0, 0);
+    if (!reduce) party = performance.now();
+  }
   const setCalm = (on) => { reduce = osReduce || on; };
   // view({ yaw, pitch, zoom, focus: [x, y, z] }) eases the camera there; lock(true) stops drag-to-rotate
   function view(v) {
@@ -347,5 +359,5 @@ export function createCube() {
   }
   const lock = (on) => { locked = on; if (on) { dragging = false; vx = vy = 0; } };
   const isLocked = () => locked;
-  return { mount, turn, seq, apply, reset, stop, busy, highlight, pose, setCalm, view, lock, isLocked };
+  return { mount, turn, seq, apply, reset, stop, busy, highlight, pose, setCalm, view, lock, isLocked, celebrate };
 }
