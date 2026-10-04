@@ -241,7 +241,8 @@ function textAt(i) {
 }
 function lessonUi() {
   const n = L.steps.length;
-  $$('#seq .mv').forEach((el, i) => { el.className = `mv${i < li ? ' done' : i === li ? ' next' : ''}`; });
+  // the caption explains the move just made, so that move is the one lit up
+  $$('#seq .mv').forEach((el, i) => { el.className = `mv${i < li - 1 ? ' done' : i === li - 1 ? ' next' : ''}`; });
   $('#lessonBadge').textContent = `${li}/${n}`;
   $('#whyText').innerHTML = textAt(li);
   $('#lPrev').disabled = li === 0;
