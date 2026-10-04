@@ -16,6 +16,8 @@
 //   lật                       change which colour of a piece faces up
 //   về như cũ                 back to how it was before
 //   liên hợp, commutator      the two patterns of cấp 2
+// The first time a concept appears, the standard cubing term follows in brackets:
+//   (UFR), (nghịch đảo), (LBL), (cross), (slot FR), (định hướng ... / OLL), (hoán vị ... / PLL), (conjugate, setup move)
 
 import { invertSeq } from './cube.js';
 
@@ -46,7 +48,7 @@ export const LESSONS = [
       { label: 'Tâm', dim: (p) => kind(p) !== 1, text: '<b>6 mảnh tâm</b>, mỗi mảnh có 1 màu. Tâm không bao giờ đổi chỗ, nên màu của tâm cho biết cả mặt đó phải có màu gì.' },
       { label: 'Cạnh', dim: (p) => kind(p) !== 2, text: '<b>12 mảnh cạnh</b>, mỗi mảnh có 2 màu. Xoay thế nào thì cạnh cũng chỉ nằm ở chỗ dành cho cạnh.' },
       { label: 'Góc', dim: (p) => kind(p) !== 3, text: '<b>8 mảnh góc</b>, mỗi mảnh có 3 màu. Góc cũng chỉ nằm ở chỗ dành cho góc.' },
-      { label: 'Ý nghĩa', dim: null, text: 'Vì vậy, giải khối là <b>đưa từng mảnh về đúng chỗ</b>, không phải tô màu từng ô. Trong các bài, chỗ của mảnh được gọi theo các mặt nó chạm vào, ví dụ góc <b>trên-trước-phải</b>.' },
+      { label: 'Ý nghĩa', dim: null, text: 'Vì vậy, giải khối là <b>đưa từng mảnh về đúng chỗ</b>, không phải tô màu từng ô. Trong các bài, chỗ của mảnh được gọi theo các mặt nó chạm vào, ví dụ góc <b>trên-trước-phải</b> (ký hiệu UFR).' },
     ],
     quiz: {
       q: 'Mảnh có đúng 2 màu là loại nào?',
@@ -82,7 +84,7 @@ export const LESSONS = [
       "<b>F</b>: nước thứ ba, khối đã bị xáo trộn. F' chỉ gỡ được F khi khối còn y như lúc vừa làm F, nên phải gỡ F trước tiên bằng <b>F'</b>.",
       "<b>F'</b> gỡ F: khối về như lúc vừa làm xong U. Tiếp theo gỡ U bằng <b>U'</b>.",
       "<b>U'</b> gỡ U: khối về như lúc vừa làm xong R. Cuối cùng gỡ R bằng <b>R'</b>.",
-      'Khối đã về như cũ. Quy tắc: <b>đảo thứ tự, rồi đổi chiều từng nước</b>. Giống đi tất rồi đi giày: lúc cởi thì cởi giày trước.',
+      'Khối đã về như cũ. Quy tắc: <b>đảo thứ tự, rồi đổi chiều từng nước</b>. Giống đi tất rồi đi giày: lúc cởi thì cởi giày trước. Chuỗi gỡ này gọi là <b>nghịch đảo</b> của chuỗi ban đầu.',
     ]),
     quiz: {
       q: 'Chuỗi nào gỡ được R U F?',
@@ -96,7 +98,7 @@ export const LESSONS = [
     id: 'c1-cross', cap: 1, title: 'Dấu cộng trắng',
     solution: S('F2'), track: [0, -1, 1],
     dim: (p) => !(kind(p) === 1 || (p.x === 0 && p.y === -1 && p.z === 1)),
-    intro: 'Bước 1 của cách giải từng tầng: làm dấu cộng trắng ở mặt dưới. Bắt đầu bằng 4 cạnh trắng vì đặt chúng không làm hỏng gì, và chúng nối tâm trắng với 4 tâm xung quanh, làm mốc cho các bước sau. Cạnh trắng-xanh lá (kẻ sọc) đang ở tầng trên: màu trắng hướng lên, màu xanh lá nằm ngay trên tâm xanh lá.',
+    intro: 'Bước 1 của cách giải từng tầng (phương pháp tầng-theo-tầng, LBL): làm dấu cộng trắng (cross) ở mặt dưới. Bắt đầu bằng 4 cạnh trắng vì đặt chúng không làm hỏng gì, và chúng nối tâm trắng với 4 tâm xung quanh, làm mốc cho các bước sau. Cạnh trắng-xanh lá (kẻ sọc) đang ở tầng trên: màu trắng hướng lên, màu xanh lá nằm ngay trên tâm xanh lá.',
     notes: [, '<b>F2</b>: xoay mặt trước nửa vòng. Cạnh đi thẳng xuống tầng dưới mà vẫn ở mặt trước, nên màu xanh lá vẫn khớp tâm, còn màu trắng quay xuống dưới. Với các cạnh trắng khác có màu trắng hướng lên: xoay U cho màu còn lại nằm trên tâm cùng màu, rồi xoay mặt đó nửa vòng.'],
     quiz: {
       q: 'Vì sao phải xoay U cho cạnh nằm trên tâm cùng màu rồi mới làm F2?',
@@ -126,7 +128,7 @@ export const LESSONS = [
     id: 'c1-middle', cap: 1, title: 'Tầng giữa',
     solution: S("U R U' R' U' F' U F"), track: [1, 0, 1],
     dim: (p) => !(p.y <= 0 || (p.x === 1 && p.y === 0 && p.z === 1)),
-    intro: 'Bước 3: tầng dưới đã xong, giờ đưa 4 cạnh không có màu vàng vào tầng giữa. Cạnh xanh lá-cam (kẻ sọc) đang ở tầng trên, màu xanh lá khớp tâm xanh lá phía trước. Nó cần vào chỗ trước-phải của tầng giữa. Cách làm: nhấc góc trắng bên dưới lên, ghép với cạnh thành một cặp, rồi hạ cả cặp xuống.',
+    intro: 'Bước 3: tầng dưới đã xong, giờ đưa 4 cạnh không có màu vàng vào tầng giữa. Cạnh xanh lá-cam (kẻ sọc) đang ở tầng trên, màu xanh lá khớp tâm xanh lá phía trước. Nó cần vào chỗ trước-phải của tầng giữa (slot FR). Cách làm: nhấc góc trắng bên dưới lên, ghép với cạnh thành một cặp, rồi hạ cả cặp xuống.',
     notes: [,
       "<b>U · tránh</b>: dời cạnh xanh lá-cam sang trái cho khỏi vướng. Nếu bỏ nước này, R' ở sau sẽ kéo cạnh xuống tầng giữa nhưng bị ngược màu.",
       '<b>R · mở</b>: nâng góc trắng ở dưới-trước-phải lên tầng trên.',
@@ -148,7 +150,7 @@ export const LESSONS = [
     id: 'c1-yellowcross', cap: 1, title: 'Dấu cộng vàng',
     solution: S("F R U R' U' F'"),
     dim: (p) => p.y < 1,
-    intro: "Bước 4: hai tầng dưới đã xong, giờ làm mặt vàng. Trước hết lật các cạnh cho màu vàng hướng lên, tạo thành dấu cộng. Tầng trên đang có một đường vàng nằm ngang, còn hai cạnh trên-trước và trên-sau bị lật. <b>F R U R' U' F'</b> sửa hai cạnh đó mà không làm hỏng hai tầng dưới.",
+    intro: "Bước 4: hai tầng dưới đã xong, giờ làm mặt vàng. Trước hết lật các cạnh cho màu vàng hướng lên (định hướng cạnh), tạo thành dấu cộng. Tầng trên đang có một đường vàng nằm ngang, còn hai cạnh trên-trước và trên-sau bị lật. <b>F R U R' U' F'</b> sửa hai cạnh đó mà không làm hỏng hai tầng dưới.",
     notes: [,
       '<b>F · chuẩn bị</b>: cạnh trên-trước (màu vàng nhìn ra trước) xuống chỗ trước-phải của tầng giữa, nơi R với tới được.',
       '<b>R</b>: nâng cạnh đó trở lại tầng trên, lần này màu vàng hướng lên.',
@@ -168,7 +170,7 @@ export const LESSONS = [
     id: 'c1-sune', cap: 1, title: 'Mặt vàng',
     solution: S("R U R' U R U2 R'"),
     dim: (p) => p.y < 1,
-    intro: "Bước 5: dấu cộng vàng đã có, giờ lật các góc cho cả mặt trên thành màu vàng. Ở đây chỉ một góc có màu vàng hướng lên, ở trên-trước-trái: đúng trường hợp dùng công thức <b>Sune</b>. Mẹo: U chỉ đưa các góc đi vòng mà không đổi màu hướng lên; chỉ R và R' mới lật góc.",
+    intro: "Bước 5: dấu cộng vàng đã có, giờ lật các góc cho cả mặt trên thành màu vàng (định hướng góc). Hai bước lật màu này gọi chung là định hướng tầng cuối; từ cấp 4 bạn sẽ học cách làm nhanh hơn, gọi là OLL. Ở đây chỉ một góc có màu vàng hướng lên, ở trên-trước-trái: đúng trường hợp dùng công thức <b>Sune</b>. Mẹo: U chỉ đưa các góc đi vòng mà không đổi màu hướng lên; chỉ R và R' mới lật góc.",
     notes: [,
       '<b>R</b>: nâng góc trắng ở dưới-trước-phải lên tầng trên. Sune tạm lấy chỗ của nó để lật các góc vàng, cuối công thức sẽ đưa nó về.',
       '<b>U</b>: đưa góc trắng sang trên-trước-trái, ra khỏi mặt phải.',
@@ -190,7 +192,7 @@ export const LESSONS = [
     solution: S("R' F R' B2 R F' R' B2 R2"),
     dim: (p) => p.y < 1,
     track: [-1, 1, 1],
-    intro: 'Bước 6: mặt trên đã vàng nhưng các mảnh tầng trên có thể sai chỗ. Công thức bài này chỉ đổi chỗ góc, bài sau chỉ đổi chỗ cạnh, nên hai bước không làm hỏng nhau. Ở đây góc trên-trước-trái (kẻ sọc) đã đúng chỗ, 3 góc còn lại cần đổi chỗ vòng tròn mà vẫn giữ màu vàng hướng lên.',
+    intro: 'Bước 6: mặt trên đã vàng nhưng các mảnh tầng trên có thể sai chỗ. Công thức bài này chỉ đổi chỗ góc (hoán vị góc), bài sau chỉ đổi chỗ cạnh, nên hai bước không làm hỏng nhau. Ở đây góc trên-trước-trái (kẻ sọc) đã đúng chỗ, 3 góc còn lại cần đổi chỗ vòng tròn mà vẫn giữ màu vàng hướng lên.',
     notes: [,
       "<b>R' · chuẩn bị</b>: hạ mặt phải, để 3 góc cần đổi nằm đúng 3 chỗ mà phần giữa công thức sẽ đổi vòng: trên-trước-phải, dưới-trước-phải và trên-sau-trái. R2 ở cuối sẽ gỡ nước này.",
       '<b>F · A</b>: xoay mặt trước, góc kẻ sọc tạm sang trên-trước-phải.', , ,
@@ -210,7 +212,7 @@ export const LESSONS = [
     solution: S("R U' R U R U R U' R' U' R2"),
     dim: (p) => p.y < 1,
     track: [0, 1, -1],
-    intro: 'Bước cuối: mặt vàng và 4 góc đã xong, còn 3 cạnh tầng trên cần đổi chỗ vòng tròn. Đặt cạnh đã đúng chỗ ở trên-sau (cạnh kẻ sọc). Công thức đổi chỗ vòng tròn 3 cạnh còn lại, mọi thứ khác về như cũ. Ý chính: mặt phải xoay đủ một vòng và mang các cạnh đi theo.',
+    intro: 'Bước cuối: mặt vàng và 4 góc đã xong, còn 3 cạnh tầng trên cần đổi chỗ vòng tròn (hoán vị cạnh). Hai bước đổi chỗ này gọi chung là hoán vị tầng cuối; từ cấp 4 bạn sẽ học cách làm nhanh hơn, gọi là PLL. Đặt cạnh đã đúng chỗ ở trên-sau (cạnh kẻ sọc). Công thức đổi chỗ vòng tròn 3 cạnh còn lại, mọi thứ khác về như cũ. Ý chính: mặt phải xoay đủ một vòng và mang các cạnh đi theo.',
     notes: [,
       '<b>R</b>: cạnh vàng-đỏ (đang ở trên-phải, chỗ của cạnh vàng-cam) bị mặt phải kéo xuống chỗ sau-phải của tầng giữa.',
       "<b>U'</b>: xoay tầng trên, đưa cạnh vàng-cam vào trên-phải để mặt phải mang nó đi tiếp.", , , , ,
@@ -247,7 +249,7 @@ export const LESSONS = [
   {
     id: 'c2-conjugate', cap: 2, title: 'Liên hợp A B A\'',
     solution: S("F R U R' U' F'"), setup: [],
-    intro: "Liên hợp là làm <b>A</b> để đưa các mảnh tới chỗ dễ xử lý, làm <b>B</b>, rồi gỡ <b>A</b>. Ở đây A = F, B = R U R' U'.",
+    intro: "Liên hợp (conjugate, còn gọi là dùng setup move) là làm <b>A</b> để đưa các mảnh tới chỗ dễ xử lý, làm <b>B</b>, rồi gỡ <b>A</b>. Ở đây A = F, B = R U R' U'.",
     notes: [,
       '<b>A = F · chuẩn bị</b>: cạnh trên-trước xuống chỗ trước-phải của tầng giữa, góc trên-trước-phải xuống dưới-trước-phải. Đó đúng là hai chỗ ở hai tầng dưới mà B sẽ chạm vào.', , , ,
       "<b>B = R U R' U'</b>: commutator ở bài trước. Ở hai tầng dưới, nó chỉ chạm chỗ trước-phải của tầng giữa và góc dưới-trước-phải, nơi đang chứa mảnh của tầng trên.",
