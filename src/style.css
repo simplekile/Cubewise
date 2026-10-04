@@ -269,3 +269,35 @@ button:active { transform: scale(.94); transition-duration: .08s; }
   .timer.land .tm, .bd.new .ic, .node.cur .orb, .lvl-badge.bump { animation: none !important; }
   .tab-pill, .toast { transition: none; }
 }
+
+/* lesson: the main control names the move it will make */
+.step-btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-width: 150px; height: 52px; padding: 0 22px; border: 0; border-radius: 999px;
+  background: var(--cta); color: var(--cta-ink); font-size: 16px; font-weight: 500; white-space: nowrap; }
+.step-btn b { font-weight: 700; font-size: 17px; letter-spacing: .01em; }
+.step-btn .lucide { width: 18px; height: 18px; }
+.step-btn.over { background: var(--fill-2); color: var(--fg); }
+.step-btn.over .lucide { display: none; }
+.step-btn:disabled { opacity: .5; }
+
+/* achievement badges are tappable; locked ones show their icon greyed */
+button.bd { border: 0; background: none; padding: 0; color: inherit; font: inherit; }
+.bd.lock .ic .lucide { opacity: .5; }
+
+/* bottom sheet with achievement details */
+.sheet { position: absolute; inset: 0; z-index: 6; display: flex; align-items: flex-end; }
+.sheet-scrim { position: absolute; inset: 0; background: rgba(0,0,0,.55); opacity: 0; transition: opacity .3s ease; }
+.sheet-card { position: relative; width: 100%; padding: 10px 24px calc(28px + var(--bottom)); border-radius: 28px 28px 0 0; background: #17171C;
+  display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; transform: translateY(100%); transition: transform .45s var(--glide); }
+.sheet.open .sheet-scrim { opacity: 1; }
+.sheet.open .sheet-card { transform: none; }
+.sheet-grip { width: 36px; height: 4px; border-radius: 2px; background: rgba(255,255,255,.18); margin-bottom: 10px; }
+.sheet-card .ic { width: 64px; height: 64px; border-radius: 20px; }
+.sheet-card .ic .lucide { width: 30px; height: 30px; }
+.sheet.open .sheet-card .ic { animation: pop .55s var(--spring) .1s both; }
+.muted-ic { background: rgba(255,255,255,.06); color: var(--muted); border: 1px dashed rgba(255,255,255,.14); }
+.sheet-how { font-size: 15px; line-height: 1.55; color: #C9C9D1; max-width: 320px; }
+.sheet-state { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
+.sheet-state .lucide { width: 15px; height: 15px; }
+.sheet-state.ok { color: var(--green); }
+.sheet-card .ghost { margin-top: 6px; min-width: 120px; }
+@media (prefers-reduced-motion: reduce) { .sheet-card, .sheet-scrim { transition: none; } .sheet.open .sheet-card .ic { animation: none; } }

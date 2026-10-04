@@ -78,8 +78,8 @@
       <p class="why-text" id="whyText"></p>
 
       <div class="controls">
-        <button class="round" id="lPrev" aria-label="Bước trước"><i data-lucide="skip-back"></i></button>
-        <button class="round main" id="lNext" aria-label="Bước tiếp"><i data-lucide="play"></i></button>
+        <button class="round" id="lPrev" aria-label="Lùi một bước"><i data-lucide="undo-2"></i></button>
+        <button class="step-btn" id="lNext"><span id="lNextText">Bắt đầu</span><i data-lucide="arrow-right" id="lNextIcon"></i></button>
         <button class="round" id="lReset" aria-label="Làm lại từ đầu"><i data-lucide="rotate-ccw"></i></button>
         <button class="round" id="lSix" aria-label="Lặp 6 lần" title="Lặp 6 lần" hidden><i data-lucide="repeat"></i></button>
       </div>
@@ -124,6 +124,18 @@
 
       <button class="link" id="wipe">Xóa toàn bộ tiến độ</button>
     </section>
+  </div>
+
+  <div class="sheet" id="sheet" hidden>
+    <div class="sheet-scrim" data-close></div>
+    <div class="sheet-card" role="dialog" aria-modal="true" aria-labelledby="sheetName">
+      <div class="sheet-grip"></div>
+      <div class="ic" id="sheetIc"></div>
+      <h2 id="sheetName"></h2>
+      <p class="sheet-how" id="sheetHow"></p>
+      <p class="sheet-state" id="sheetState"></p>
+      <button class="ghost" data-close>Đóng</button>
+    </div>
   </div>
 
   <nav class="tabbar" aria-label="Điều hướng chính">

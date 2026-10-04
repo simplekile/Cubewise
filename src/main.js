@@ -1,13 +1,13 @@
 import './style.css';
 import {
   createIcons, House, Box, Timer, Map, Flame, Rotate3d, RotateCcw, RotateCw, ArrowRight, ChevronLeft, ChevronRight,
-  SkipBack, Play, Repeat, Shuffle, Check, Lock, BookOpen, Sparkles, BookX, Gauge, Zap, Trophy, X, Circle,
+  SkipBack, Play, Undo2, Repeat, Shuffle, Check, Lock, BookOpen, Sparkles, BookX, Gauge, Zap, Trophy, X, Circle,
 } from 'lucide';
 import { createCube, invertMove } from './cube.js';
 import { LESSONS, LEVELS, lessonsOf, byId } from './lessons.js';
 import { load, save, wipe, today, levelOf, aoN, fmt } from './store.js';
 
-const ICONS = { House, Box, Timer, Map, Flame, Rotate3d, RotateCcw, RotateCw, ArrowRight, ChevronLeft, ChevronRight, SkipBack, Play, Repeat, Shuffle, Check, Lock, BookOpen, Sparkles, BookX, Gauge, Zap, Trophy, X, Circle };
+const ICONS = { House, Box, Timer, Map, Flame, Rotate3d, RotateCcw, RotateCw, ArrowRight, ChevronLeft, ChevronRight, SkipBack, Play, Undo2, Repeat, Shuffle, Check, Lock, BookOpen, Sparkles, BookX, Gauge, Zap, Trophy, X, Circle };
 const icons = () => createIcons({ icons: ICONS });
 
 const $ = (s) => document.querySelector(s);
@@ -61,19 +61,19 @@ function streakNow() {
 const fresh = new Set(); // achievements earned this session, not yet shown on the journey screen
 const bestOf = () => (state.solves.length ? Math.min(...state.solves.map((s) => s.t)) : null);
 const ACH = [
-  { id: 'first', name: 'Bài học đầu tiên', icon: 'book-open', tone: 't-blue', test: () => Object.keys(state.done).length > 0 },
-  { id: 'home', name: 'Mảnh nào về nhà nấy', icon: 'box', tone: 't-blue', test: () => !!state.done['c0-pieces'] },
-  { id: 'solve', name: 'Giải lần đầu', icon: 'sparkles', tone: 't-green', test: () => !!state.flags.selfSolve },
-  { id: 'nobook', name: 'Không cần hướng dẫn', icon: 'book-x', tone: 't-red', test: () => !!state.flags.noBook },
-  { id: 'comm', name: 'Mười câu đúng liền', icon: 'repeat', tone: 't-gold', test: () => state.quizRun >= 10, progress: () => `${Math.min(state.quizRun, 10)}/10` },
-  { id: 'six', name: 'Chu kỳ 6', icon: 'rotate-cw', tone: 't-blue', test: () => !!state.flags.six },
-  { id: 'timer', name: 'Lần bấm giờ đầu tiên', icon: 'timer', tone: 't-orange', test: () => state.solves.length > 0 },
-  { id: 'sub2', name: 'Dưới 2 phút', icon: 'gauge', tone: 't-orange', test: () => bestOf() != null && bestOf() < 120 },
-  { id: 'sub1', name: 'Dưới 1 phút', icon: 'zap', tone: 't-orange', test: () => bestOf() != null && bestOf() < 60 },
-  { id: 'st3', name: 'Chuỗi 3 ngày', icon: 'flame', tone: 't-red', test: () => state.streak.count >= 3, progress: () => `${Math.min(streakNow(), 3)}/3` },
-  { id: 'st7', name: 'Chuỗi 7 ngày', icon: 'flame', tone: 't-red', test: () => state.streak.count >= 7, progress: () => `${Math.min(streakNow(), 7)}/7` },
-  { id: 'st30', name: 'Chuỗi 30 ngày', icon: 'flame', tone: 't-gold', test: () => state.streak.count >= 30, progress: () => `${Math.min(streakNow(), 30)}/30` },
-  { id: 'pb', name: 'Kỷ lục mới', icon: 'trophy', tone: 't-gold', test: () => !!state.flags.pb },
+  { id: 'first', how: "Học xong bất kỳ bài nào, tức là trả lời đúng câu hỏi cuối bài.", name: 'Bài học đầu tiên', icon: 'book-open', tone: 't-blue', test: () => Object.keys(state.done).length > 0 },
+  { id: 'home', how: "Học xong bài Ba loại mảnh ở cấp 0.", name: 'Mảnh nào về nhà nấy', icon: 'box', tone: 't-blue', test: () => !!state.done['c0-pieces'] },
+  { id: 'solve', how: "Tự giải được khối thật, rồi bấm \"Tôi đã tự giải được khối thật\" ở bài Đổi chỗ cạnh cuối hoặc ở mốc cấp 1 trong Hành trình.", name: 'Giải lần đầu', icon: 'sparkles', tone: 't-green', test: () => !!state.flags.selfSolve },
+  { id: 'nobook', how: "Giải được khối thật mà không nhìn hướng dẫn, rồi bấm nút xác nhận ở bài Đổi chỗ cạnh cuối hoặc ở mốc cấp 1.", name: 'Không cần hướng dẫn', icon: 'book-x', tone: 't-red', test: () => !!state.flags.noBook },
+  { id: 'comm', how: "Trả lời đúng ngay lần đầu 10 câu hỏi vì sao liên tiếp. Trả lời sai một lần là đếm lại từ đầu.", name: 'Mười câu đúng liền', icon: 'repeat', tone: 't-gold', test: () => state.quizRun >= 10, progress: () => `${Math.min(state.quizRun, 10)}/10` },
+  { id: 'six', how: "Ở bài Commutator đầu tiên (cấp 2), bấm nút lặp để chạy R U R' U' 6 lần và xem khối tự về như cũ.", name: 'Chu kỳ 6', icon: 'rotate-cw', tone: 't-blue', test: () => !!state.flags.six },
+  { id: 'timer', how: "Giải một lần với đồng hồ ở tab Luyện tập.", name: 'Lần bấm giờ đầu tiên', icon: 'timer', tone: 't-orange', test: () => state.solves.length > 0 },
+  { id: 'sub2', how: "Có một lần giải bấm giờ dưới 2 phút.", name: 'Dưới 2 phút', icon: 'gauge', tone: 't-orange', test: () => bestOf() != null && bestOf() < 120 },
+  { id: 'sub1', how: "Có một lần giải bấm giờ dưới 1 phút.", name: 'Dưới 1 phút', icon: 'zap', tone: 't-orange', test: () => bestOf() != null && bestOf() < 60 },
+  { id: 'st3', how: "Học hoặc giải bấm giờ 3 ngày liên tiếp.", name: 'Chuỗi 3 ngày', icon: 'flame', tone: 't-red', test: () => state.streak.count >= 3, progress: () => `${Math.min(streakNow(), 3)}/3` },
+  { id: 'st7', how: "Học hoặc giải bấm giờ 7 ngày liên tiếp.", name: 'Chuỗi 7 ngày', icon: 'flame', tone: 't-red', test: () => state.streak.count >= 7, progress: () => `${Math.min(streakNow(), 7)}/7` },
+  { id: 'st30', how: "Học hoặc giải bấm giờ 30 ngày liên tiếp.", name: 'Chuỗi 30 ngày', icon: 'flame', tone: 't-gold', test: () => state.streak.count >= 30, progress: () => `${Math.min(streakNow(), 30)}/30` },
+  { id: 'pb', how: "Phá kỷ lục cá nhân của bạn, khi đã có ít nhất 5 lần giải bấm giờ.", name: 'Kỷ lục mới', icon: 'trophy', tone: 't-gold', test: () => !!state.flags.pb },
 ];
 function checkAch() {
   for (const a of ACH) {
@@ -286,7 +286,12 @@ function lessonUi() {
   const why = $('#whyText'), txt = textAt(li);
   if (why.innerHTML !== txt) { why.innerHTML = txt; why.classList.remove('swap'); void why.offsetWidth; why.classList.add('swap'); }
   $('#lPrev').disabled = li === 0;
-  $('#lNext').disabled = li >= n;
+  // the main button says exactly what it will do: the next move, move on, or start over
+  const over = li >= n, step = L.steps[li];
+  $('#lNextText').innerHTML = over ? 'Làm lại từ đầu' : step.m ? `Vặn <b>${esc(step.m)}</b>` : 'Tiếp';
+  $('#lNext').setAttribute('aria-label', over ? 'Làm lại từ đầu' : step.m ? `Vặn ${step.m}` : 'Bước tiếp');
+  $('#lNext').classList.toggle('over', over);
+  $('#lReset').hidden = over;
   const end = li >= n;
   $('#quiz').hidden = !end;
   $('#lessonDone').hidden = !(end && answered);
@@ -302,7 +307,8 @@ function lessonReset() {
   lessonUi();
 }
 $('#lNext').addEventListener('click', () => {
-  if (!L || cube.busy() || li >= L.steps.length) return;
+  if (!L || cube.busy()) return;
+  if (li >= L.steps.length) { lessonReset(); return; }
   const s = L.steps[li];
   const after = () => { li++; highlightAt(li); lessonUi(); if (li === L.steps.length) $('#quiz').scrollIntoView?.({ behavior: 'smooth', block: 'nearest' }); };
   if (s.m) cube.turn(s.m, 480).then(after); else after();
@@ -541,12 +547,44 @@ function renderPath() {
   $('#badges').innerHTML = ACH.map((a) => {
     const has = !!state.ach[a.id];
     const prog = !has && a.progress ? `<small>${a.progress()}</small>` : '';
-    return `<div class="bd ${has ? '' : 'lock'} ${fresh.has(a.id) ? 'new' : ''}"><div class="ic ${has ? a.tone : ''}"><i data-lucide="${has ? a.icon : 'lock'}"></i></div><span>${esc(a.name)}</span>${prog}</div>`;
+    return `<button class="bd ${has ? '' : 'lock'} ${fresh.has(a.id) ? 'new' : ''}" data-ach="${a.id}" aria-label="${esc(a.name)}${has ? ', đã đạt' : ', chưa đạt'}"><div class="ic ${has ? a.tone : ''}"><i data-lucide="${a.icon}"></i></div><span>${esc(a.name)}</span>${prog}</button>`;
   }).join('');
   fresh.clear();
   stagger($('#path'), 'enter-list');
   icons();
 }
+// achievement detail: what it takes, where you are, when you got it
+function openAch(id) {
+  const a = ACH.find((x) => x.id === id);
+  const when = state.ach[id];
+  const ic = $('#sheetIc');
+  ic.className = `ic ${when ? a.tone : 'muted-ic'}`;
+  ic.innerHTML = `<i data-lucide="${a.icon}"></i>`;
+  $('#sheetName').textContent = a.name;
+  $('#sheetHow').textContent = a.how;
+  const st = $('#sheetState');
+  if (when) {
+    const d = new Date(`${when}T00:00`).toLocaleDateString('vi-VN', { day: 'numeric', month: 'long', year: 'numeric' });
+    st.innerHTML = `<i data-lucide="check"></i>Đã đạt ngày ${esc(d)} · +30 XP`;
+    st.className = 'sheet-state ok';
+  } else {
+    st.innerHTML = `<i data-lucide="lock"></i>Chưa đạt${a.progress ? ` · ${esc(a.progress())}` : ''} · +30 XP khi đạt`;
+    st.className = 'sheet-state';
+  }
+  icons();
+  const sh = $('#sheet');
+  sh.hidden = false;
+  requestAnimationFrame(() => sh.classList.add('open'));
+}
+function closeSheet() {
+  const sh = $('#sheet');
+  sh.classList.remove('open');
+  setTimeout(() => { if (!sh.classList.contains('open')) sh.hidden = true; }, 350);
+}
+$('#badges').addEventListener('click', (e) => { const b = e.target.closest('[data-ach]'); if (b) openAch(b.dataset.ach); });
+$('#sheet').addEventListener('click', (e) => { if (e.target.closest('[data-close]')) closeSheet(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#sheet').hidden) closeSheet(); });
+
 $('#wipe').addEventListener('click', () => {
   if (!confirm('Xóa toàn bộ XP, bài đã học, các lần giải và thành tựu? Không thể hoàn tác.')) return;
   state = wipe();
