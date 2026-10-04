@@ -105,9 +105,9 @@ const fresh = new Set(); // achievements earned this session, not yet shown on t
 const bestOf = () => (state.solves.length ? Math.min(...state.solves.map((s) => s.t)) : null);
 const ACH = [
   { id: 'first', how: "Học xong bất kỳ bài nào, tức là trả lời đúng câu hỏi cuối bài.", name: 'Bài học đầu tiên', icon: 'book-open', tone: 't-blue', test: () => Object.keys(state.done).length > 0 },
-  { id: 'home', how: "Học xong bài Ba loại mảnh ở cấp 0.", name: 'Mảnh nào về nhà nấy', icon: 'box', tone: 't-blue', test: () => !!state.done['c0-pieces'] },
-  { id: 'solve', how: "Tự giải được khối thật, rồi bấm \"Tôi đã tự giải được khối thật\" ở bài Đổi chỗ cạnh cuối hoặc ở mốc cấp 1 trong Hành trình.", name: 'Giải lần đầu', icon: 'sparkles', tone: 't-green', test: () => !!state.flags.selfSolve },
-  { id: 'nobook', how: "Giải được khối thật mà không nhìn hướng dẫn, rồi bấm nút xác nhận ở bài Đổi chỗ cạnh cuối hoặc ở mốc cấp 1.", name: 'Không cần hướng dẫn', icon: 'book-x', tone: 't-red', test: () => !!state.flags.noBook },
+  { id: 'home', how: "Học xong bài Ba loại mảnh ở cấp 0.", name: 'Mảnh nào chỗ nấy', icon: 'box', tone: 't-blue', test: () => !!state.done['c0-pieces'] },
+  { id: 'solve', how: "Tự giải được khối thật, rồi bấm \"Tôi đã tự giải được khối thật\" ở bài Đổi chỗ cạnh tầng trên hoặc ở mốc cấp 1 trong Hành trình.", name: 'Giải lần đầu', icon: 'sparkles', tone: 't-green', test: () => !!state.flags.selfSolve },
+  { id: 'nobook', how: "Giải được khối thật mà không nhìn hướng dẫn, rồi bấm nút xác nhận ở bài Đổi chỗ cạnh tầng trên hoặc ở mốc cấp 1.", name: 'Không cần hướng dẫn', icon: 'book-x', tone: 't-red', test: () => !!state.flags.noBook },
   { id: 'comm', how: "Trả lời đúng ngay lần đầu 10 câu hỏi vì sao liên tiếp. Trả lời sai một lần là đếm lại từ đầu.", name: 'Mười câu đúng liền', icon: 'repeat', tone: 't-gold', test: () => state.quizRun >= 10, progress: () => `${Math.min(state.quizRun, 10)}/10` },
   { id: 'six', how: "Ở bài Commutator đầu tiên (cấp 2), bấm nút lặp để chạy R U R' U' 6 lần và xem khối tự về như cũ.", name: 'Chu kỳ 6', icon: 'rotate-cw', tone: 't-blue', test: () => !!state.flags.six },
   { id: 'timer', how: "Giải một lần với đồng hồ ở tab Luyện tập.", name: 'Lần bấm giờ đầu tiên', icon: 'timer', tone: 't-orange', test: () => state.solves.length > 0 },
@@ -397,7 +397,7 @@ $('#lSix').addEventListener('click', async () => {
   $('#lNext').disabled = true;
   await cube.seq(moves, 170);
   if (current !== 's-lesson') return;
-  $('#whyText').dataset.src = ''; $('#whyText').innerHTML = 'Khối đã trở lại trạng thái ban đầu. Commutator này có <b>chu kỳ 6</b>: làm 6 lần là về như cũ.';
+  $('#whyText').dataset.src = ''; $('#whyText').innerHTML = 'Sau <b>6 lần</b> lặp commutator này, khối tự về như cũ.';
   $('#lessonBadge').textContent = `${moves.length}/${moves.length}`;
   $('#lNext').disabled = false;
   if (!state.flags.six) { state.flags.six = true; checkAch(); }
