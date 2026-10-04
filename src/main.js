@@ -13,6 +13,11 @@ const icons = () => createIcons({ icons: ICONS });
 
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => [...document.querySelectorAll(s)];
+// a small square of the real sticker colour in front of each colour name, outside of tags
+const SW = { 'xanh lá': '#1FB86E', 'xanh dương': '#2F6BFF', 'trắng': '#F4F6FA', 'vàng': '#FFD43B', 'đỏ': '#E3343F', 'cam': '#FF7A1A' };
+const SW_RE = /(^|[^\p{L}])(xanh lá|xanh dương|trắng|vàng|đỏ|cam)(?![\p{L}])/giu;
+const swatch = (html) => html.split(/(<[^>]*>)/).map((part) => part.startsWith('<') ? part
+  : part.replace(SW_RE, (_, pre, w) => `${pre}<span class="cw"><span class="sw" style="--sw:${SW[w.toLowerCase()]}"></span>${w}</span>`)).join('');
 const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
 let state = load();
@@ -308,7 +313,7 @@ function lessonUi() {
   $$('#seq .mv').forEach((el, i) => { el.className = `mv${i < li - 1 ? ' done' : i === li - 1 ? ' next' : ''}`; });
   $('#lessonBadge').textContent = `${li}/${n}`;
   const why = $('#whyText'), txt = textAt(li);
-  if (why.innerHTML !== txt) { why.innerHTML = txt; why.classList.remove('swap'); void why.offsetWidth; why.classList.add('swap'); }
+  if (why.dataset.src !== txt) { why.dataset.src = txt; why.innerHTML = swatch(txt); why.classList.remove('swap'); void why.offsetWidth; why.classList.add('swap'); }
   $('#lPrev').disabled = li === 0;
   // the main button says exactly what it will do: the next move, move on, or start over
   const over = li >= n, step = L.steps[li];
@@ -350,11 +355,11 @@ $('#lSix').addEventListener('click', async () => {
   lessonReset();
   const moves = [];
   for (let i = 0; i < 6; i++) moves.push(...L.solution);
-  $('#whyText').innerHTML = `Đang chạy ${esc(L.solution.join(' '))} 6 lần liên tiếp, tổng ${moves.length} nước…`;
+  $('#whyText').dataset.src = ''; $('#whyText').innerHTML = `Đang chạy ${esc(L.solution.join(' '))} 6 lần liên tiếp, tổng ${moves.length} nước…`;
   $('#lNext').disabled = true;
   await cube.seq(moves, 170);
   if (current !== 's-lesson') return;
-  $('#whyText').innerHTML = 'Khối đã trở lại trạng thái ban đầu. Commutator này có <b>chu kỳ 6</b>: làm 6 lần là về như cũ.';
+  $('#whyText').dataset.src = ''; $('#whyText').innerHTML = 'Khối đã trở lại trạng thái ban đầu. Commutator này có <b>chu kỳ 6</b>: làm 6 lần là về như cũ.';
   $('#lessonBadge').textContent = `${moves.length}/${moves.length}`;
   $('#lNext').disabled = false;
   if (!state.flags.six) { state.flags.six = true; checkAch(); }
@@ -364,8 +369,8 @@ function renderQuiz() {
   answered = false; missed = false;
   const q = L.quiz;
   $('#quizTag').textContent = state.quiz[L.id] ? 'Câu hỏi vì sao' : 'Câu hỏi vì sao · +10 XP';
-  $('#quizQ').textContent = q.q;
-  $('#opts').innerHTML = q.opts.map((o, i) => `<button class="opt" data-i="${i}"><span class="k">${'ABC'[i]}</span>${esc(o)}</button>`).join('');
+  $('#quizQ').innerHTML = swatch(esc(q.q));
+  $('#opts').innerHTML = q.opts.map((o, i) => `<button class="opt" data-i="${i}"><span class="k">${'ABC'[i]}</span>${swatch(esc(o))}</button>`).join('');
   $('#fb').hidden = true;
 }
 $('#opts').addEventListener('click', (e) => {
@@ -377,14 +382,14 @@ $('#opts').addEventListener('click', (e) => {
   if (!ok) {
     b.classList.add('wrong');
     fb.className = 'feedback no';
-    fb.innerHTML = `<b>Chưa đúng.</b> Gợi ý: ${esc(L.quiz.hint)}`;
+    fb.innerHTML = `<b>Chưa đúng.</b> Gợi ý: ${swatch(esc(L.quiz.hint))}`;
     if (!missed) { missed = true; state.quizRun = 0; save(state); }
     return;
   }
   answered = true;
   b.classList.add('right');
   fb.className = 'feedback ok';
-  fb.innerHTML = `<b>Đúng rồi.</b> ${esc(L.quiz.right)}`;
+  fb.innerHTML = `<b>Đúng rồi.</b> ${swatch(esc(L.quiz.right))}`;
   if (!missed) state.quizRun += 1;
   if (!state.quiz[L.id]) { state.quiz[L.id] = true; addXp(10, 'câu hỏi vì sao'); }
   if (!state.done[L.id]) {

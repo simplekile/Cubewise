@@ -131,6 +131,8 @@ h3 { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
 .mv.done { color: var(--gold); background: var(--gold-soft); }
 .mv.next { color: var(--cta-ink); background: var(--cta); }
 .why-text { font-size: 14.5px; line-height: 1.6; color: #C9C9D1; text-align: center; padding: 0 8px; min-height: 70px; }
+.cw { white-space: nowrap; }
+.sw { display: inline-block; width: .72em; height: .72em; border-radius: 3px; background: var(--sw); margin: 0 .3em .06em 0; vertical-align: baseline; box-shadow: inset 0 0 0 1px rgba(0,0,0,.25); }
 .why-text b { color: var(--fg); font-weight: 600; }
 .controls { display: flex; justify-content: center; align-items: center; gap: 12px; }
 
