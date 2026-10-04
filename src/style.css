@@ -50,6 +50,7 @@ h3 { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
 }
 .screens { flex: 1; position: relative; min-height: 0; z-index: 1; }
 .screen { position: absolute; inset: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: calc(30px + var(--top)) 20px calc(120px + var(--bottom)); display: flex; flex-direction: column; gap: 22px; }
+.screen > * { flex-shrink: 0; } /* long content scrolls the screen instead of squeezing a block under its neighbours */
 
 .top { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; }
 .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
