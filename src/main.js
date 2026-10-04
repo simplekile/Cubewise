@@ -62,12 +62,12 @@ const fresh = new Set(); // achievements earned this session, not yet shown on t
 const bestOf = () => (state.solves.length ? Math.min(...state.solves.map((s) => s.t)) : null);
 const ACH = [
   { id: 'first', name: 'Bài học đầu tiên', icon: 'book-open', tone: 't-blue', test: () => Object.keys(state.done).length > 0 },
-  { id: 'home', name: 'Nhà của mảnh', icon: 'box', tone: 't-blue', test: () => !!state.done['c0-pieces'] },
+  { id: 'home', name: 'Mảnh nào về nhà nấy', icon: 'box', tone: 't-blue', test: () => !!state.done['c0-pieces'] },
   { id: 'solve', name: 'Giải lần đầu', icon: 'sparkles', tone: 't-green', test: () => !!state.flags.selfSolve },
-  { id: 'nobook', name: 'Không cần sách', icon: 'book-x', tone: 't-red', test: () => !!state.flags.noBook },
-  { id: 'comm', name: 'Thợ commutator', icon: 'repeat', tone: 't-gold', test: () => state.quizRun >= 10, progress: () => `${Math.min(state.quizRun, 10)}/10` },
+  { id: 'nobook', name: 'Không cần hướng dẫn', icon: 'book-x', tone: 't-red', test: () => !!state.flags.noBook },
+  { id: 'comm', name: 'Mười câu đúng liền', icon: 'repeat', tone: 't-gold', test: () => state.quizRun >= 10, progress: () => `${Math.min(state.quizRun, 10)}/10` },
   { id: 'six', name: 'Chu kỳ 6', icon: 'rotate-cw', tone: 't-blue', test: () => !!state.flags.six },
-  { id: 'timer', name: 'Bấm giờ đầu tiên', icon: 'timer', tone: 't-orange', test: () => state.solves.length > 0 },
+  { id: 'timer', name: 'Lần bấm giờ đầu tiên', icon: 'timer', tone: 't-orange', test: () => state.solves.length > 0 },
   { id: 'sub2', name: 'Dưới 2 phút', icon: 'gauge', tone: 't-orange', test: () => bestOf() != null && bestOf() < 120 },
   { id: 'sub1', name: 'Dưới 1 phút', icon: 'zap', tone: 't-orange', test: () => bestOf() != null && bestOf() < 60 },
   { id: 'st3', name: 'Chuỗi 3 ngày', icon: 'flame', tone: 't-red', test: () => state.streak.count >= 3, progress: () => `${Math.min(streakNow(), 3)}/3` },
@@ -104,7 +104,7 @@ function gateInfo(n) {
     const goal = TIME_GOAL[n];
     reqs.push({
       ok: a != null && a < goal,
-      text: a == null ? `Ao12 dưới ${goalText(goal)} · cần thêm ${12 - state.solves.length} lần giải` : `Ao12 dưới ${goalText(goal)} · hiện ${fmt(a)}`,
+      text: a == null ? `Ao12 dưới ${goalText(goal)} · cần thêm ${12 - state.solves.length} lần giải` : `Ao12 dưới ${goalText(goal)} · hiện tại ${fmt(a)}`,
     });
   }
   return { reqs, ready: n <= LAST_GATE && reqs.every((r) => r.ok) };
@@ -237,7 +237,7 @@ function renderLessonList() {
     }
     html.push('</div>');
   }
-  html.push(`<p class="note">Cấp 3 trở đi chủ yếu là luyện tốc độ. Bài CFOP sẽ có ở bản sau.</p>`);
+  html.push(`<p class="note">Từ cấp 3 trở đi chủ yếu là luyện tốc độ. Bài CFOP sẽ có ở bản sau.</p>`);
   $('#lessonList').innerHTML = html.join('');
   $$('#lessonList .group').forEach((g) => stagger(g, 'enter-list'));
   icons();
@@ -258,7 +258,7 @@ function openLesson(id) {
   const siblings = lessonsOf(L.cap);
   const at = siblings.indexOf(L);
   $('#lessonSteps').innerHTML = siblings.map((_, i) => `<i class="${i < at ? 'on' : i === at ? 'cur' : ''}"></i>`).join('');
-  $('#lessonSteps').setAttribute('aria-label', `Bài ${at + 1} trên ${siblings.length}`);
+  $('#lessonSteps').setAttribute('aria-label', `Bài ${at + 1} trong ${siblings.length}`);
   $('#lSix').hidden = !L.six;
   const hasMoves = L.steps.every((s) => s.m);
   $('#seq').hidden = !hasMoves;
@@ -433,7 +433,7 @@ function renderStats() {
   else if (a12 < goal) gap.textContent = `Ao12 đã dưới ${goalText(goal)}`;
   else gap.textContent = `Còn ${(a12 - goal).toFixed(1)} giây nữa là Ao12 dưới ${goalText(goal)}`;
   const t = state.timerXp.day === today() ? state.timerXp.xp : 0;
-  gap.textContent += ` · XP đồng hồ hôm nay ${t}/50`;
+  gap.textContent += ` · XP từ đồng hồ hôm nay ${t}/50`;
 }
 
 let tState = 'idle', holdT = 0, t0 = 0, raf = 0;
@@ -446,7 +446,7 @@ function press() {
   holdT = setTimeout(() => { if (tState === 'hold') { tState = 'ready'; tEl.className = 'timer ready'; hint.textContent = 'Thả để bắt đầu'; } }, 350);
 }
 function release() {
-  if (tState === 'hold') { clearTimeout(holdT); tState = 'idle'; tEl.className = 'timer'; hint.textContent = 'Giữ, thả để bắt đầu'; return; }
+  if (tState === 'hold') { clearTimeout(holdT); tState = 'idle'; tEl.className = 'timer'; hint.textContent = 'Giữ rồi thả để bắt đầu'; return; }
   if (tState === 'ready') {
     tState = 'run'; tEl.className = 'timer'; hint.textContent = 'Chạm để dừng';
     t0 = performance.now();
@@ -457,7 +457,7 @@ function release() {
 function cancelTimer() {
   if (tState === 'run' || tState === 'hold' || tState === 'ready') {
     cancelAnimationFrame(raf); clearTimeout(holdT);
-    tState = 'idle'; tEl.className = 'timer'; tm.textContent = '0.00'; hint.textContent = 'Giữ, thả để bắt đầu';
+    tState = 'idle'; tEl.className = 'timer'; tm.textContent = '0.00'; hint.textContent = 'Giữ rồi thả để bắt đầu';
   }
 }
 function stopRun() {
@@ -467,14 +467,14 @@ function stopRun() {
   tEl.classList.remove('land'); void tEl.offsetWidth; tEl.classList.add('land');
   tState = 'stopping';
   setTimeout(() => { if (tState === 'stopping') tState = 'done'; }, 250);
-  if (s < 3) { hint.textContent = 'Quá nhanh, có lẽ chạm nhầm. Chưa lưu.'; return; }
+  if (s < 3) { hint.textContent = 'Nhanh quá, chắc bạn chạm nhầm. Lần này chưa lưu.'; return; }
   const prevBest = bestOf();
   state.solves.push({ t: s, at: Date.now() });
   if (state.solves.length > 500) state.solves.splice(0, state.solves.length - 500);
   touchDay();
   const d = today();
   if (state.timerXp.day !== d) state.timerXp = { day: d, xp: 0 };
-  if (state.timerXp.xp < 50) { state.timerXp.xp += 5; addXp(5, 'giải tính giờ'); }
+  if (state.timerXp.xp < 50) { state.timerXp.xp += 5; addXp(5, 'lần giải tính giờ'); }
   if (prevBest != null && s < prevBest && state.solves.length > 5) {
     state.flags.pb = true;
     hint.textContent = 'Kỷ lục mới';
@@ -548,7 +548,7 @@ function renderPath() {
   icons();
 }
 $('#wipe').addEventListener('click', () => {
-  if (!confirm('Xóa toàn bộ XP, bài đã học, lần giải và thành tựu?')) return;
+  if (!confirm('Xóa toàn bộ XP, bài đã học, các lần giải và thành tựu? Không thể hoàn tác.')) return;
   state = wipe();
   renderAll();
   go('s-home');

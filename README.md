@@ -32,7 +32,7 @@ npm run build    # bản production trong dist/
 | `src/store.js` | Lưu tiến độ, XP, Ao5/Ao12 |
 | `src/main.js` | Giao diện và luồng màn hình |
 
-Hướng khối: vàng trên, trắng dưới, xanh lá trước, cam phải.
+Hướng khối: vàng trên, trắng dưới, xanh lá trước, cam phải, đỏ trái, xanh dương sau.
 
 ## Triển khai
 
